@@ -1,0 +1,252 @@
+\begin{tikzpicture}[%
+    every node/.style={font=\small\ttfamily},
+  ]
+  \node (objset) [objset] at (0,0) {%
+    \struct{%
+      objset\_phys\_t\lowstrut,
+      os\_meta\_dnode\lowstrut,
+      os\_zil\_header\lowstrut,
+      os\_type=ZPL\lowstrut,
+      os\_pad[376]\lowstrut
+    }
+  };
+  \node (dva0) [dva, outer sep=0pt, below right=.5cm and 0 of objset.south west] {D\\V\\A\\0};
+  \node (dva1) [dva, outer sep=0pt, right=0cm of dva0.east] {D\\V\\A\\1};
+  \node (dva2) [dva, outer sep=0pt, right=0cm of dva1.east] {D\\V\\A\\2};
+  \draw [-, dnode_li_color] (dva2.north east) -- ++(1.25cm,0);
+  \draw [-, dnode_li_color] (dva2.south east) -- ++(1.25cm,0);
+  \node [right=.25cm of dva2.east, text=dnode_ru_color] {....};
+
+  \objects{blkptr0}{%
+    blkptr, below=1cm of dva0.south}{blk\_ptr}
+  \node (blkptr02) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below=.5cm of dva2.south, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr01) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below=.75cm of dva1.south, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr0}{%
+    blkptr, below=1cm of dva0.south}{blk\_ptr}
+
+  \begin{scope}[local bounding box=dnode_array0, name prefix=dnode_array0-]
+    \node (dnode_31)  [dnode_array, below right=.5cm and 1.5cm of blkptr0.south west] {};
+    \node (dnode_dots) [dnode_array, left=0cm of dnode_31.west, %
+      align=center, minimum width=1.2cm, text width=1.2cm] {....};
+    \node (dnode_usr) [dnode_array, left=0cm of dnode_dots.west] %
+        {%
+          \setlength{\tabcolsep}{0pt}
+          \renewcommand{\arraystretch}{.75}
+          \hspace{-1cm}
+          \begin{tabular}{c}
+            \footnotesize{u}\\
+            \footnotesize{s}\\
+            \footnotesize{r}
+          \end{tabular}
+        };
+    \node (dnode_var) [dnode_array, left=0cm of dnode_usr.west] %
+        {%
+          \setlength{\tabcolsep}{0pt}
+          \renewcommand{\arraystretch}{.75}
+          \hspace{-1cm}
+          \begin{tabular}{c}
+            \footnotesize{v}\\
+            \footnotesize{a}\\
+            \footnotesize{r}
+          \end{tabular}
+        };
+    \node (dnode_sbin) [dnode_array, left=0cm of dnode_var.west] %
+        {%
+          \setlength{\tabcolsep}{0pt}
+          \renewcommand{\arraystretch}{.75}
+          \hspace{-1cm}
+          \begin{tabular}{c}
+            \footnotesize{s}\\
+            \footnotesize{b}\\
+            \footnotesize{i}\\
+            \footnotesize{n}
+          \end{tabular}
+        };
+    \node (dnode_1) [dnode_array, left=0cm of dnode_sbin.west] {};
+    \node (dnode_0) [dnode_array, left=0cm of dnode_1.west] {};
+  \end{scope}
+
+  \begin{scope}[local bounding box=dnode_array1, name prefix=dnode_array1-]
+    \node (dnode_32)  [dnode_array, right=.6cm of dnode_array0-dnode_31.east] {};
+    \node (dnode_33)  [dnode_array, right=0cm of dnode_32.east] {};
+    \node (dnode_root)  [dnode_array, right=0cm of dnode_33.east] %
+        {%
+          \setlength{\tabcolsep}{0pt}
+          \renewcommand{\arraystretch}{.75}
+          \hspace{-1cm}
+          \begin{tabular}{c}
+            \footnotesize{R}\\
+            \footnotesize{O}\\
+            \footnotesize{O}\\
+            \footnotesize{T}
+          \end{tabular}
+        };
+    \node (dnode_dots) [dnode_array, right=0cm of dnode_root.east, %
+          align=center, minimum width=2.25cm, text width=2.25cm] {....};
+  \node (dnode_63)  [dnode_array, right=0cm of dnode_dots.east] {};
+  \end{scope}
+  \node (dots) [right=.25cm of dnode_array1] {....};
+  \begin{scope}[local bounding box=dnode_array2, name prefix=dnode_array2-]
+    \node (dnode_zdump)  [dnode_array, right=.25cm of dots.east] %
+        {%
+          \setlength{\tabcolsep}{0pt}
+          \renewcommand{\arraystretch}{.5}
+          \hspace{-1cm}
+          \begin{tabular}{c}
+            \footnotesize{z}\\
+            \footnotesize{d}\\
+            \footnotesize{u}\\
+            \footnotesize{m}\\
+            \footnotesize{p}\\
+          \end{tabular}
+        };
+    \node (dnode_dots) [dnode_array, right=0cm of dnode_zdump.east, %
+          align=center, minimum width=3.25cm, text width=3.25cm] {....};
+  \end{scope}
+
+  % \node (dnode_zdb) [dnode, below right=.75cm and -.75cm of dnode_array1-dnode_zdb.south, %
+  %   minimum width=4.5cm, text width=4.5cm] {%
+  %   \struct{%
+  %     dnode\_phys\_t\lowstrut,
+  %     dn\_type = \\ \footnotesize{DMU\_OT\_PLAIN\_FILE\_CONTENTS},
+  %     ....\highstrut,
+  %     dn\_level = 3\lowstrut,
+  %     dn\_blkptr[]\lowstrut,
+  %     dn\_bonus[]\lowstrut,
+  %     dn\_spill\lowstrut,
+  %   }
+  % };
+
+  \node (dnode_rootdir) [dnode={7}, above right =.75cm and .5cm of dnode_array1-dnode_root.north, %
+        xshift=1cm, minimum width=4.5cm, text width=4.5cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \\ \footnotesize{DMU\_OT\_DIRECTORY\_CONTENTS},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+
+  \node [above=0cm of dnode_array0-dnode_0, array_ru_color] {0};
+  \node [above=0cm of dnode_array0-dnode_1, array_ru_color] {1};
+  \node [above=0cm of dnode_array0-dnode_sbin, array_ru_color] {2};
+  \node [above=0cm of dnode_array0-dnode_var, array_ru_color] {3};
+  \node [above=0cm of dnode_array0-dnode_usr, array_ru_color] {4};
+  \node [above=0cm of dnode_array0-dnode_31, array_ru_color] {1f};
+  \node [below=0cm of dnode_array1-dnode_32, array_ru_color] {20};
+  \node [below=0cm of dnode_array1-dnode_root, array_ru_color] {22};
+  \node [below=0cm of dnode_array1-dnode_63, array_ru_color] {3f};
+  \node [above=0cm of dnode_array2-dnode_zdump, array_ru_color] {80};
+  \node (zap_rootdir) [zap, right=.5cm of dnode_rootdir.five east, minimum width=2cm, text width=2cm] {%
+    sbin=2\\
+    var=3\\
+    usr=4
+  };
+  \node (zap) [below=0 of zap_rootdir, data_ru_color, text width=4cm, align=center] %
+        {Micro ZAP\\(embedded blkptr)};
+
+  \node (dnode_meta) [dnode={7}, above left=-.5cm and 1cm of dva0.south west, %
+    minimum width=4.5cm, text width=4.5cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = DMU\_OT\_DNODE\lowstrut,
+      ....\highstrut,
+      dn\_level = 6\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+
+  \node (dnode_sbin) [dnode={7}, below right=.75cm and 1cm of dnode_array0-dnode_sbin.south east, %
+    minimum width=4.5cm, text width=4.5cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \\ \footnotesize{DMU\_OT\_DIRECTORY\_CONTENTS},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+  \node (zap_sbin) [zap, above right=-.1cm and .6cm of dnode_sbin.five east] {%
+    zdump=128
+  };
+  \node (zdump_mzap) [below=0 of zap_sbin, data_ru_color, text width=4cm, align=center]%
+        {Micro ZAP\\(embedded blkptr)};
+
+  \node (dnode_master) [dnode={7}, below left=.75cm and -1.5cm of dnode_array0.south west,%
+    minimum width=4.5cm, text width=4.5cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \\ \footnotesize{DMU\_OT\_MASTER\_NODE},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+  \node (zap_master) [zap, above right=1cm and -.75cm of dnode_master.north west,%
+    minimum width=2.75cm, text width=2.75cm] {%
+    VERSION=5\\
+    SA\_ATTRS=32\\
+    DELETE\_QUEUE=33\\
+    ROOT=34
+  };
+  \node (zap) [above=0 of zap_master, data_ru_color] {Micro ZAP};
+
+  \node (dnode_zdump) [dnode={7}, below right=.75cm and -.3cm of dnode_array2-dnode_zdump.south east, %
+    minimum width=4.5cm, text width=4.5cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \\ \footnotesize{DMU\_OT\_PLAIN\_FILE\_CONTENTS},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+
+  \draw [-, densely dashed] (objset.one split west) -- (dnode_meta.north west);
+  \draw [-, densely dashed] (objset.two split west) -- (dnode_meta.north east);
+  \draw [-, densely dashed] (dnode_meta.four split east) -- (dva0.north west);
+  \draw [-, densely dashed] (dnode_meta.five split east) -- (dva0.south west);
+  \draw [-, densely dashed] (dnode_array1-dnode_root.north west) -- (dnode_rootdir.south west);
+  \draw [-, densely dashed] (dnode_array1-dnode_root.north east) -- (dnode_rootdir.south east);
+  \draw [-, densely dashed] (dnode_array0-dnode_1.south west) -- (dnode_master.north west);
+  \draw [-, densely dashed] (dnode_array0-dnode_1.south east) -- (dnode_master.north east);
+  \draw [-, densely dashed] (dnode_array0-dnode_sbin.south west) -- (dnode_sbin.north west);
+  \draw [-, densely dashed] (dnode_array0-dnode_sbin.south east) -- (dnode_sbin.north east);
+  \draw [-, densely dashed] (dnode_rootdir.four split east) -- (zap_rootdir.north west);
+  \draw [-, densely dashed] (dnode_rootdir.five split east) -- (zap_rootdir.south west);
+  \draw [-, densely dashed] (dnode_sbin.four split east) -- (zap_sbin.north west);
+  \draw [-, densely dashed] (dnode_sbin.five split east) -- (zap_sbin.south west);
+  \draw [-, densely dashed] (dnode_array2-dnode_zdump.south west) -- (dnode_zdump.north west);
+  \draw [-, densely dashed] (dnode_array2-dnode_zdump.south east) -- (dnode_zdump.north east);
+
+  \draw [<-] (objset.one west) -- ++(-1cm, 0) %
+        node [left, text width=3.5cm, align=center, text=ds_ru_color, xshift=.5cm] %
+        {ds\_dp\\of head data set};
+  \draw [->, densely dotted, thick] (blkptr0.one west) -| (dnode_array0.north west) %
+        node [midway,rotate=-90, xshift=1cm, text width=1.5cm, text=blkptr_ru_color] {5 more\\levels};
+  \draw [->] (dva0.south) -- (blkptr0.north);
+  \draw [->] (dva1.south) -- (blkptr01.north);
+  \draw [->] (dva2.south) -- (blkptr02.north);
+  \draw [->] (dnode_master.five west) -- ++(-.5cm,0) coordinate(tmp) -- (tmp |- zap_master.south);
+  \draw [->] (dnode_zdump.five east) -- ++(.75cm, 0) -- ++(0,-.75cm) %
+        node [below, fill=data_bg_color, draw=data_li_color, text=data_ru_color] {DATA};
+\end{tikzpicture}

@@ -1,0 +1,57 @@
+ifeq ($(DEBUG), y)
+  OUTPUT=--verbose
+else
+  OUTPUT=>/dev/null 2>&1
+endif
+
+PUBDIR = .
+all: html pdf
+html: $(foreach target, $(MDHTMLTARGETS), $(PUBDIR)/$(target))
+pdf: $(foreach target, $(MDPDFTARGETS),  $(PUBDIR)/$(target))
+.PHONY: all pdf html
+
+$(PUBDIR)/%.md.html: $$($$*_mdparts) $$(LISTINGS) $(HTMLSTYLES) $(FIGURESRC)
+	@if [ -d $(FIGURESDIR) -a -f $(FIGURESDIR)/Makefile ]; 			\
+	 then 									\
+		printf "%-12s %s\n" "Generating" "figures";			\
+		make -C $(FIGURESDIR) figures					\
+			DEBUG=$(DEBUG)						\
+			--no-print-directory;					\
+	 fi
+	@printf "%-12s %s\n" "Generating" $@
+	@$(PANDOCPATH)/pandoc $(EXTRAARGS)					\
+		--katex=https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/		\
+		--toc --toc-depth=2						\
+		--wrap=preserve							\
+		--listings							\
+		--section-divs							\
+		--from markdown+fenced_divs					\
+		--from markdown+pipe_tables+table_captions			\
+		--from markdown+tex_math_single_backslash			\
+		--from markdown+definition_lists				\
+		--to html5  --template=$(HTML5TEMPLATE)				\
+		$(HTMLCMDCSS)							\
+		--metadata date="`date`"					\
+		--output $@ $($*_mdparts) $(OUTPUT)
+
+TEXTEMPLATE = templates/template.tex
+
+$(PUBDIR)/%.md.pdf: $$($$*_mdparts) $(TEXTEMPLATE)
+	@if [ -d $(FIGURESDIR) -a -f $(FIGURESDIR)/Makefile ]; 			\
+	 then 									\
+		printf "%-12s %s\n" "Generating" "figures";			\
+		make -C $(FIGURESDIR) figures					\
+			TEXINPUTS="$(TEXINPUTS):$(STYLEDIR)" 			\
+			DEBUG=$(DEBUG)						\
+			DOCTOOLS=$(DOCTOOLSPATH)				\
+			--no-print-directory;					\
+	 fi
+	@printf "%-12s %s\n" "Generating" $@
+	@TEXINPUTS="$(TEXINPUTS):./templates"					\
+		pandoc $(EXTRAARGS)						\
+		--pdf-engine=xelatex						\
+		--pdf-engine-opt="-shell-escape"				\
+		--from markdown+tex_math_single_backslash			\
+		--from markdown-markdown_in_html_blocks-native_divs		\
+		--from markdown+pipe_tables+table_captions			\
+		--template=$(TEXTEMPLATE) $($*_mdparts) -o $@ $(OUTPUT)

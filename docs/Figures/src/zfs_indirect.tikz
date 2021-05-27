@@ -1,0 +1,103 @@
+\begin{tikzpicture}[%
+    every text node part/.style={align=left},
+  ]
+  \node (dnode) [dnode={7}] at (0,0) {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type\lowstrut,
+      ....\highstrut,
+      dn\_blkptr[1]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+  \node (dva0) [dva, outer sep=0pt, right=1.5cm of dnode.four east, %
+    minimum width = .2cm, text width=.2cm, minimum height=2.5cm]  {D\\V\\A\\0};
+  \node (dva1) [dva, outer sep=0pt, right=0cm of dva0.east, %
+    minimum width = .2cm, text width=.2cm, minimum height=2.5cm] {D\\V\\A\\1};
+  \node (dva2) [dva, outer sep=0pt, right=0cm of dva1.east, %
+    minimum width = .2cm, text width=.2cm, minimum height=2.5cm] {D\\V\\A\\2};
+
+  \begin{scope}[local bounding box=blkptr0, name prefix=blkptr0-]
+  \objects{blkptr00}{%
+    blkptr, below=.8cm of dva0.south}{blk\_ptr}
+  \node (blkptr02) [%
+    blkptr, fit={(blkptr00)},
+    draw, below=.4cm of dva2.south, inner sep=0pt, outer sep=0pt,
+     fill=blkptr_bg_color!50] {};
+  \node (blkptr01) [%
+    blkptr, fit={(blkptr00)},
+    draw, below=.6cm of dva1.south, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr00}{%
+    blkptr, below=.8cm of dva0.south}{blk\_ptr}
+  \end{scope}
+
+  \begin{scope}[local bounding box=blkptr2, name prefix=blkptr2-]
+  \objects{blkptr20}{blkptr, below left=.5cm and .75cm of blkptr0.south}{blk\_ptr}
+  \node (blkptr22) [%
+    blkptr, fit={(blkptr20)},
+    draw, above right=.25cm and .12cm of blkptr20.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr21) [%
+    blkptr, fit={(blkptr20)},
+    draw, above right=.125cm and .06cm of blkptr20.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr20}{blkptr, below left=.5cm and .75cm of blkptr0.south}{blk\_ptr}
+  \end{scope}
+
+  \begin{scope}[local bounding box=blkptr1, name prefix=blkptr1-]
+  \objects{blkptr10}{blkptr, left= .5cm of blkptr2-blkptr20.west}{blk\_ptr}
+  \node (blkptr12) [%
+    blkptr, fit={(blkptr10)},
+    draw, above right=.25cm and .12cm of blkptr10.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr11) [%
+    blkptr, fit={(blkptr10)},
+    draw, above right=.125cm and .06 of blkptr10.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr10}{blkptr, left= .5cm of blkptr2-blkptr20.west}{blk\_ptr}
+  \end{scope}
+
+  \node (dots) [right = .5cm of blkptr2-blkptr20, text=blkptr_bg_color] {....};
+  \begin{scope}[local bounding box=blkptr3, name prefix=blkptr3-]
+  \objects{blkptr30}{blkptr, right= .5cm of dots.east}{blk\_ptr}
+  \node (blkptr32) [%
+    blkptr, fit={(blkptr30)},
+    draw, above right=.25cm and .12cm of blkptr30.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr31) [%
+    blkptr, fit={(blkptr30)},
+    draw, above right=.125cm and .06 of blkptr30.south west, inner sep=0pt, outer sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr30}{blkptr, right= .5cm of dots.east}{blk\_ptr}
+  \end{scope}
+
+  \node (data1) [data, below left=.5cm and .75cm of blkptr1.south, %
+    minimum height = 1cm, minimum width = 2cm] {Data};
+  \node (dots) [right = .125cm of data1.east, text=data_ru_color] {...};
+  \node (data2) [data, right=1.125cm of data1.east, %
+    minimum height = 1cm, minimum width = 2cm] {Data};
+  \node (dots) [right = .125cm of data2.east, text=data_ru_color] {...};
+  \node (data3) [data, right=1.35cm of data2.east, %
+    minimum height = 1cm, minimum width = 2cm] {Data};
+  \node (dots) [right = .05cm of data3.east, text=data_ru_color] {...};
+  \node (data4) [data, below=.5cm of blkptr3-blkptr30.south, xshift=1.5cm, %
+    minimum height = 1cm, minimum width = 2cm] {Data};
+
+  \draw [->] (blkptr0-blkptr00.one west) -| (blkptr1.north);
+  \draw [->] (blkptr0-blkptr00.two west) -| (blkptr2.north);
+  \draw [->] (blkptr0-blkptr00.four east) -| (blkptr3.north);
+  \draw [->] (blkptr1-blkptr10.one west) -| (data1.north);
+  \draw [->] (blkptr1-blkptr10.two east) -| (data2.north);
+  \draw [->] (blkptr2-blkptr20.one east) -| (data3.north);
+  \draw [->] (blkptr3-blkptr30.four east) -| (data4.north);
+  \draw [->] (dva0.south) -- (blkptr0-blkptr00.north);
+  \draw [->] (dva1.south) -- (blkptr0-blkptr01.north);
+  \draw [->] (dva2.south) -- (blkptr0-blkptr02.north);
+  \draw [-, densely dashed, dnode_li_color, thick] (dnode.three split east) -- (dva0.north west);
+  \draw [-, densely dashed, dnode_li_color, thick] (dnode.four split east) -- (dva0.south west);
+  \draw [-, dnode_li_color] (dva2.north east) -- ++(1.25cm,0);
+  \draw [-, dnode_li_color] (dva2.south east) -- ++(1.25cm,0);
+  \node [right=.25cm of dva2.east, text=dnode_ru_color] {....};
+\end{tikzpicture}

@@ -1,0 +1,136 @@
+\begin{tikzpicture}[%
+    every node/.style={font=\small\ttfamily}
+  ]
+  \begin{scope}[local bounding box=mos_part0, name prefix=mos_part0-]
+    \mositem{empty}  {} {};
+    \mositem{objdir}{right=0cm of empty.east}{\Longstack{O b j ~ D i r}}
+    \mositem{others} {right=0cm of objdir.east, %
+      minimum width=4cm, text width=4cm}{....}
+    \mositem{others}  {right=0cm of others.east}{}
+  \end{scope}
+  \begin{scope}[local bounding box=mos_part1, name prefix=mos_part1-]
+    \mositem{rootds} {right=1.5cm of mos_part0-others.east} {\Longstack{R o o t ~ D S}};
+    \mositem{empty}  {right=0cm of rootds.east} {};
+    \mositem{child}  {right=0cm of empty.east} {\scriptsize{\Longstack{C h i l d ~ M a p}}};
+    \mositem{others} {right=0cm of child.east, %
+      minimum width=1cm, text width=1cm}{....};
+    \mositem{headds} {right=0cm of others.east} {\Longstack{H e a d ~ D S}};
+    \mositem{others} {right=0cm of headds.east, %
+      minimum width=1cm, text width=1cm}{....};
+    \mositem{config} {right=0cm of others.east} {\Longstack{c o n f i g}};
+    \mositem{empty} {right=0cm of config.east} {};
+    \mositem{empty} {right=0cm of empty.east} {};
+  \end{scope}
+  \node (mos) [array_ru_color, left=0cm of mos_part0] {\sffamily\Large{MOS}};
+
+  \node (dnode_objdir) [dnode={7}, above=.75cm of mos_part0-objdir,%
+    minimum width=4cm, text width=4cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \footnotesize{DMU\_OT\_OBJECT\_DIRECTORY},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+
+  \node (zap_objdir) [zap, below right=4.5cm and 0cm of dnode_objdir.south west, %
+        text width = 3cm, minimum width=3cm] {%
+    root\_dataset=32\\
+    config=61\\
+    ....
+  };
+  \node (fzap) [below=0 of zap_objdir, zap_ru_color] {Fat ZAP};
+
+  \node (dnode_rootds) [dnode={7}, above=.75cm of mos_part1-rootds, xshift=-.25cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \footnotesize{DMU\_OT\_DSL\_DIR},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+
+  \node (dsl_rootds) [dsl, above right=0cm and 1cm of dnode_rootds.south east,%
+        text width=3.75cm, minimum width=3.75cm] {%
+    \struct{%
+      dsl\_dir\_phys\_t\lowstrut,
+      dd\_creation\_time,
+      dd\_child\_dir\_zapobj\\=34,
+      dd\_head\_dataset\_obj\\=54
+    }
+  };
+
+  \node (dnode_childmap) [dnode={7}, below left=.75cm and -.5cm of mos_part1-child.south,%
+    minimum width=4cm, text width=4cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \footnotesize{DMU\_OT\_DSL\_DIR\_CHILD\_MAP},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+
+  \node (dnode_headds) [dnode={7}, below right=.75cm and -.5cm of mos_part1-headds.south,%
+    minimum width=4cm, text width=4cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_bonus\_type = \footnotesize{DMU\_OT\_DSL\_DATASET},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+
+  \node (childmap_mzap) [zap, above left=.5cm and 1cm of dnode_childmap.south west] {%
+    \$MOS=35\\
+    \$FREE=38\\
+    \$ORIGIN=42
+  };
+  \node (emzap) [below=0cm of childmap_mzap, zap_ru_color, text width=4cm, align=center]%
+        {Micro ZAP\\(Embedded Blkptr)};
+
+  \node (ds_headds) [dsl, above right=1cm and .75cm of dnode_headds.south east,%
+        text width=3.75cm, minimum width=3.75cm] {%
+    \struct{%
+      dsl\_dataset\_phys\_t\lowstrut,
+      ds\_creation\_time,
+      ds\_creation\_txg=1\lowstrut,
+      ds\_bp
+    }
+  };
+  \node (dataset) [below=.5cm of ds_headds, text width=3cm, text=ds_ru_color, align=center]%
+        {Data Set\\(file system)};
+
+  \node [above=0cm of mos_part0-objdir, array_ru_color] {1};
+  \node [above=0cm of mos_part1-rootds, array_ru_color] {32};
+  \node [above=0cm of mos_part1-child, array_ru_color] {34};
+  \node [above=0cm of mos_part1-headds, array_ru_color] {54};
+  \node [above=0cm of mos_part1-config, array_ru_color] {61};
+
+  \draw [-, densely dashed] (mos_part0-objdir.north west) -- (dnode_objdir.south west);
+  \draw [-, densely dashed] (mos_part0-objdir.north east) -- (dnode_objdir.south east);
+  \draw [-, densely dashed] (mos_part1-rootds.north west) -- (dnode_rootds.south west);
+  \draw [-, densely dashed] (mos_part1-rootds.north east) -- (dnode_rootds.south east);
+  \draw [-, densely dashed] (dnode_rootds.five split east) -- (dsl_rootds.north west);
+  \draw [-, densely dashed] (dnode_rootds.six split east)  -- (dsl_rootds.south west);
+  \draw [->] (dnode_objdir.five west) -- ++(-.25cm,0) |- (zap_objdir.west);
+  \draw [-, densely dashed] (mos_part1-child.south west) -- (dnode_childmap.north west);
+  \draw [-, densely dashed] (mos_part1-child.south east) -- (dnode_childmap.north east);
+  \draw [-, densely dashed] (mos_part1-headds.south west) -- (dnode_headds.north west);
+  \draw [-, densely dashed] (mos_part1-headds.south east) -- (dnode_headds.north east);
+  \draw [-, densely dashed] (dnode_childmap.four split west) -- (childmap_mzap.north east);
+  \draw [-, densely dashed] (dnode_childmap.five split west)  -- (childmap_mzap.south east);
+  \draw [->] (dnode_headds.five east) -- ++(.25cm,0) |- (ds_headds.one west);
+  \draw [->] (ds_headds.four south) -- (dataset.north);
+\end{tikzpicture}

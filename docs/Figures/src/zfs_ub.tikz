@@ -1,0 +1,98 @@
+\begin{tikzpicture}
+  \node (ub) [dnode={7}] {%
+    \struct{%
+      uberblock\_t\lowstrut,
+      ub\_magic,
+      ub\_version,
+      ub\_txg\lowstrut,
+      ....\highstrut,
+      ub\_rootbp\lowstrut,
+      ....\highstrut
+    }
+  };
+  \node (os) [dnode={5}, below left = 0cm and 1cm of ub.north west] {%
+    \struct{%
+      objset\_phys\_t\lowstrut,
+      os\_meta\_dnode,
+      os\_zil\_header,
+      os\_type = \\\footnotesize{DMU\_OST\_META},
+      ....\highstrut
+    }
+  };
+  \node (meta_dnode) [dnode={7}, below left = 0cm and 1cm of os.north west] {%
+    \struct {%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = DMU\_OT\_DNODE,
+      ....\highstrut,
+      dn\_level = 2\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+  \node (blkptr) [dnode={3}, below left = 0cm and 1cm of meta_dnode.north west] {%
+    \struct {%
+      blkptr\_t\lowstrut,
+      blk\_dva[3],
+      ....\highstrut
+    }
+  };
+
+  \objects{blkptr0}{%
+    blkptr, draw=none, fill=none, below left=1.25cm and 1.5cm of blkptr.north west}{blk\_ptr}
+  \node (blkptr02) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below left=1.25cm and 1cm of blkptr.north west, inner sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr01) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below left=.25cm and .25cm of blkptr02.north east, inner sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr0}{%
+    blkptr, below left = .25cm and .25cm of blkptr01.north east}{blk\_ptr}
+
+  \begin{scope}[local bounding box=mos_part0, name prefix=mos_part0-]
+    \mositem{empty}  {below right=.75cm and -.5cm of blkptr0.south west} {};
+    \mositem{objdir} {right=0cm of empty.east} {\Longstack{O b j ~ D i r}};
+    \mositem{others} {right=0cm of objdir.east, %
+      minimum width=4cm, text width=4cm}{....}
+    \mositem{others}  {right=0cm of others.east}{}
+  \end{scope}
+  \begin{scope}[local bounding box=mos_part1, name prefix=mos_part1-]
+    \mositem{rootds} {right=1cm of mos_part0-others.east} {\Longstack{R o o t ~ D S}};
+    \mositem{empty}  {right=0cm of rootds.east} {};
+    \mositem{child}  {right=0cm of empty.east} {\scriptsize{\Longstack{C h i l d ~ M a p}}};
+    \mositem{others} {right=0cm of child.east, %
+      minimum width=1cm, text width=1cm}{....};
+    \mositem{headds} {right=0cm of others.east} {\Longstack{H e a d ~ D S}};
+    \mositem{others} {right=0cm of headds.east, %
+      minimum width=1cm, text width=1cm}{....};
+    \mositem{config} {right=0cm of others.east} {\Longstack{c o n f i g}};
+    \mositem{empty} {right=0cm of config.east} {};
+    \mositem{empty} {right=0cm of empty.east} {};
+  \end{scope}
+
+  \node [below=0cm of mos_part0-empty, array_ru_color] {0};
+  \node [below=0cm of mos_part0-objdir, array_ru_color, text width=1.5cm, align=center] {1\\(fixed)};
+  \node [below=0cm of mos_part0-others, array_ru_color] {31};
+  \node [below=0cm of mos_part1-rootds, array_ru_color] {32};
+  \node [below=0cm of mos_part1-child, array_ru_color] {34};
+  \node [below=0cm of mos_part1-headds, array_ru_color] {54};
+  \node [below=0cm of mos_part1-config, array_ru_color] {61};
+  \node [below=0cm of mos_part1-empty, array_ru_color] {63};
+  \node [right=0cm of mos_part1-empty, xshift=.1cm, %
+    array_ru_color, text width=3.5cm, align=center] {\Large\textbf{MOS}\\(dnode array)};
+
+  \draw [->] (ub.six west) -- ++(-.5cm,0) |- (os.one east);
+  \draw [-, densely dashed] (os.one split west) -- (meta_dnode.north east);
+  \draw [-, densely dashed] (os.two split west) -- (meta_dnode.south east);
+  \draw [-, densely dashed] (meta_dnode.four split west) -- (blkptr.north east);
+  \draw [-, densely dashed] (meta_dnode.five split west) -- (blkptr.south east);
+  \draw [->] (blkptr.two west) -| (blkptr02.north);
+  %\draw [->] (blkptr0.one west) -- ++(-.5cm,0) |- (mos_part0.west);
+  \draw [->] (blkptr0.one west) -| (mos_part0.north west);
+  %\draw [->] (blkptr0.two east) -- ++(1cm,0) -- ++(0,-3cm) -- ++(3cm,0) |- (mos_part1.west);
+  \draw [->] (blkptr0.two east) -| (mos_part1.north west);
+\end{tikzpicture}

@@ -1,0 +1,159 @@
+\usepackage{calc}
+\usepackage[dvipsnames]{xcolor}
+
+% Hyperlink
+\usepackage[%
+  breaklinks=true,%
+  colorlinks,%
+  citecolor=blue,%
+  filecolor=blue,%
+  linkcolor=blue,%
+  urlcolor=blue,%
+  bookmarksopen=true%
+  pdfstartview=FitW%
+]{hyperref}
+
+\usepackage{titlesec}
+
+% Copyright symbol
+\usepackage{textcomp}
+
+% header/footer
+\usepackage{fancyhdr} % exam class has already used fanchhdr
+
+% fancy stuff
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{framed}
+
+\usepackage{verbatimbox}
+\usepackage[inline]{enumitem}
+
+\usepackage[export]{adjustbox}
+\usepackage{capt-of}
+
+\usepackage{verbatim} % For comment environment and sth else
+
+\usepackage{tikz}
+\usetikzlibrary{%
+  arrows.meta,
+  positioning,
+  % shadows.blur,
+  shapes,
+  calc,
+  intersections,
+  quotes,
+  angles,
+}
+\usepackage{tkz-euclide}
+% \usetkzobj{all} texlive2019 use tkz-obj-eu-angles ...
+
+\usepackage{anyfontsize}
+\newsavebox\wmbox
+\savebox\wmbox{\tikz[color=gray,opacity=0.15]%
+\node{\shortstack{\tiny Luke Huang\\{\fontsize{3}{3}\selectfont bwonder475@tutanota.com}}};}
+
+\usepackage{graphicx,tipa,caption}
+\usepackage{flowchart}
+\newcommand*\circled[1]{\tikz[baseline=(char.base)]{
+            \node[shape=circle,draw,inner sep=1pt] (char) {#1};}}
+
+% my personal bad taste ;), feel free to remove if you don't like it.
+\linespread{1.1}
+\addtolength{\parskip}{0.25ex}
+\usepackage{xltxtra} % this package loads fontspec
+\defaultfontfeatures{Mapping=tex-text}
+
+% Palatino for serif
+%\usepackage[sc,osf]{mathpazo}
+\usepackage[sc]{mathpazo}
+% Helvetica for sans serif
+\usepackage[scaled]{helvet}
+\usepackage[T1]{fontenc}
+\setmonofont{Ubuntu Mono}
+
+\makeatletter
+\@ifclassloaded{memoir}{%
+  \usepackage{parskip}
+  \setlength{\marginparsep}{0pt}
+  \addtolength{\textwidth}{100pt}
+  \addtolength{\textheight}{6em}
+  \addtolength{\topmargin}{2em}
+  \addtolength{\headheight}{2em}
+  \setlength{\marginparwidth}{0pt}
+  \setulmargins{4cm}{*}{*}
+  \setlrmargins{1in}{*}{*}
+  \addtolength{\cftbeforesectionskip}{2pt}
+  \checkandfixthelayout
+}{%
+  \usepackage[twoside, inner=2.4cm, outer=4.4cm]{geometry}
+  \usepackage{tocloft}
+}
+\makeatother
+\setcounter{tocdepth}{2}
+
+% Colors for listings
+\definecolor{lstkeyword}  {RGB}{0, 112, 32}
+\definecolor{lstkeywordG} {RGB}{153, 168, 87}
+\definecolor{lstkeywordR} {RGB}{144, 32, 0}
+\definecolor{lstkeywordO} {RGB}{255,165,0}
+\definecolor{lstcomment}  {RGB}{96, 160, 176}
+\definecolor{lstnumber}   {RGB}{188, 122, 0}
+\definecolor{lststring}   {rgb}{0.58,0,0.82}
+\definecolor{lstbg}       {RGB}{240,240,240}
+
+\usepackage{harmony}
+\setlist[itemize,1]{labelsep=1.2em,label=\large\bfseries{$\Vier$}}
+\setlist[itemize,2]{labelsep=1.2em,label=\large\bfseries{$\AAcht$}}
+\setlist[itemize,3]{labelsep=1.2em,label=\large\bfseries{$\sharp$}}
+
+\usepackage{listings}
+\newcommand{\passthrough}[1]{#1}
+\lstset{columns=flexible}
+
+\makeatletter
+\lstset{language=C++,
+  basicstyle=\lst@ifdisplaystyle\ttfamily\footnotesize\else\color{Bittersweet}\ttfamily\footnotesize\fi,
+  backgroundcolor=\color{lstbg},
+  keywordstyle=\color{lstkeyword},
+  %emph={int,char,double,float,unsigned,void,bool},
+  %emphstyle=\color{lstkeywordR},
+  % classoffset=1,
+  % otherkeywords={>,<,.,;,-,!,=,~},
+  % morekeywords={>,<,.,;,-,!,=,~},
+  % keywordstyle=\color{lstkeywordO},
+  % classoffset=0,
+  stringstyle=\color{lststring},
+  commentstyle=\ttfamily\color{lstcomment},
+  captionpos=b,
+  numberstyle=\color{lstnumber},
+  frame=single,
+  framesep=4pt,
+  framerule=0pt,
+  xleftmargin=1em,
+  tabsize=2,
+  columns=flexible,
+  keepspaces=true,
+  breaklines=true,
+}
+\makeatother
+%\lstset{style=mystyle}
+
+%%% Extra stuff
+\lstdefinelanguage{C++}{
+  morekeywords={void}
+}
+\lstdefinelanguage{mybash}{
+  morekeywords={sudo}
+}
+\lstdefinelanguage{myelisp}{
+  language=elisp,
+  morekeywords={setcar, setcdr, nthcdr},
+}
+
+% \lstset{
+%   language = Bash,
+%   literate = {\$\#}{{{\#}}}2,
+%   columns  = fullflexible,
+%   keepspaces,
+% }
