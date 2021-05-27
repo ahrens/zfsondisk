@@ -1,0 +1,39 @@
+\begin{tikzpicture}
+  \path (0,0) pic [local bounding box=disk] (disk) {disk};
+  \node at (disk.center) [anchor=center, text=gray!80, text width=2.5cm, align=center] %
+        {\sffamily{Physical\\Vdev}};
+  \node (label0) [vdev, right=1cm of disk.east] {Label 0};
+  \node (label1) [vdev, right=0cm of label0.east] {Label 1};
+  \node (dots)   [vdev, right=0cm of label1.east, minimum width=4cm] {....};
+  \node (label2) [vdev, right=0cm of dots.east] {Label 2};
+  \node (label3) [vdev, right=0cm of label2.east] {Label 3};
+
+  \node (pad) [labelitem,below right=1cm and -2cm of disk.south] {Padding};
+  \node (be)  [labelitem,right=0cm of pad.east] {Boot Env};
+  \node (config)  [labelitem,right=0cm of be.east, minimum width=5cm, text width=5cm] {nvpair list\\e.g., "type"="disk"};
+  \begin{scope} [local bounding box=ubs]
+  \node (ub0)  [ubcell,right=0cm of config.east, minimum width=.5cm, text width=.5cm] {};
+  \node (ub1)  [ubcell,right=0cm of ub0.east] {};
+  \node (ub2)  [ubcell,right=0cm of ub1.east] {};
+  \node (ub3)  [ubcell,right=0cm of ub2.east] {};
+  \node (ub4)  [ubcell,right=0cm of ub3.east] {};
+  \node (ub5)  [ubcell,right=0cm of ub4.east] {};
+  \node (ub6)  [ubcell,right=0cm of ub5.east] {};
+  \node (ub7)  [ubcell,right=0cm of ub6.east] {};
+  \node (ub8)  [ubcell,right=0cm of ub7.east] {};
+  \node (ub126)  [ubcell,right=0cm of ub8.east] {};
+  \node (ub127)  [ubcell,right=0cm of ub126.east] {};
+  \end{scope}
+  \node (ubarray) at (ubs.center) [anchor=center, fill=white, minimum height=.8cm, %
+    text=label_ru_color, fill=label_bg_color] {Uber block array};
+  \node (zero) [below=0 of pad.south west] {0};
+  \node (labelpad) [below=0 of pad.south east] {8K};
+  \node (labelbe)  [below=0 of be.south east] {16K};
+  \node (ubbegin)  [below=0 of ub0.south west, xshift=1em] {128K};
+  \node (ubend)    [below=0 of ub127.south east, xshift=1em] {256K};
+
+  \draw [-, densely dashed] ($(disk.north east) - (0, .6cm)$) -- (label0.north west);
+  \draw [-, densely dashed] ($(disk.south east) + (0, .6cm)$) -- (label0.south west);
+  \draw [-, densely dashed] (label0.south west) -- (pad.north west);
+  \draw [-, densely dashed] (label0.south east) -- (ub127.north east);
+\end{tikzpicture}

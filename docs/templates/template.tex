@@ -1,0 +1,46 @@
+\documentclass[
+  $if(papersize)$
+  $papersize$paper,
+  $endif$
+  $if(extraoptions)$
+  $extraoptions$
+  $endif$
+]{$documentclass$}
+
+$if(fontpath)$
+\def\fontpath{$fontpath$}
+$endif$
+
+$if(lang)$
+\def\$lang${true}
+$endif$
+
+\input{preamble}
+
+$if(figcaption)$
+\captionsetup{justification=$figcaption$, singlelinecheck=false}
+$endif$
+
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\begin{document}
+
+\newcounter{groupdef}
+\pagestyle{empty}
+\tableofcontents
+\newpage
+
+$if(watermark)$
+\newwatermark*[oddpages,color=red!5,angle=60,scale=12,xpos=-46,ypos=36]{\usebox\mybox}
+\newwatermark*[evenpages,color=red!5,angle=60,scale=12,xpos=-59,ypos=36]{\usebox\mybox}
+$endif$
+
+\setlength{\headheight}{15pt} % fancyhead should be at least 14.03358pt
+\pagestyle{fancy}
+
+$body$
+
+\end{document}

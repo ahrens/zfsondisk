@@ -1,0 +1,71 @@
+\def\bit{.225cm}
+\begin{tikzpicture}[%
+    every node/.style = {
+      rectangle,
+      draw=blkptr_li_color, fill=blkptr_bg_color, text=blkptr_ru_color,
+      text width=64*\bit, minimum height=.5cm,
+      outer sep=0pt, inner sep=0pt,
+      font=\small\ttfamily,
+      align=center,
+    }
+  ]
+  \newcounter{prev}
+  \setcounter{prev}{1}
+  \foreach \i in {0,...,8} {
+    \pgfmathtruncatemacro{\l}{(8-\i)*8}
+    \draw (\i*\bit*8,0) -- node [bit, above, align=center] {\l} ++(0,.15cm);
+  }
+  \node at (0,0) (pad1) [label={[bit]left:0}, anchor=north west, text width=8*\bit] {pad};
+  \node (vdev1)   [right=0cm of pad1, text width=24*\bit] {vdev1};
+  \node (grid1)   [right=0cm of vdev1, text width=8*\bit] {GRID};
+  \node (asize1)  [right=0cm of grid1, text width=24*\bit] {ASIZE};
+  \node (g1)      [below right=0cm and 0cm of pad1.south west, text width=1*\bit,%
+    label={[bit]left:1}] {\footnotesize{G}};
+  \node (offset1) [right=0cm of g1, text width=63*\bit] {offset1};
+
+  \node (pad2)    [below right=0cm and 0cm of g1.south west, text width=8*\bit, %
+    label={[bit]left:2}] {pad};
+  \node (vdev2)   [right=0cm of pad2, text width=24*\bit] {vdev2};
+  \node (grid2)   [right=0cm of vdev2, text width=8*\bit] {GRID};
+  \node (asize2)  [right=0cm of grid2, text width=24*\bit] {ASIZE};
+  \node (g2)      [below right=0cm and 0cm of pad2.south west, text width=1*\bit,%
+    label={[bit]left:3}] {\footnotesize{G}};
+  \node (offset2) [right=0cm of g2, text width=63*\bit] {offset2};
+
+  \node (pad3)    [below right=0cm and 0cm of g2.south west, text width=8*\bit, %
+    label={[bit]left:4}] {pad};
+  \node (vdev3)   [right=0cm of pad3, text width=24*\bit] {vdev2};
+  \node (grid3)   [right=0cm of vdev3, text width=8*\bit] {GRID};
+  \node (asize3)  [right=0cm of grid3, text width=24*\bit] {ASIZE};
+  \node (g3)      [below right=0cm and 0cm of pad3.south west, text width=1*\bit,%
+    label={[bit]left:5}] {\footnotesize{G}};
+  \node (offset3) [right=0cm of g3, text width=63*\bit] {offset3};
+
+  \node (bdx) [below right=0cm and 0cm of g3.south west, %
+    text width=4*\bit, label={[bit]left:6}] {BDX};
+  \node (lvl) [right=0cm of bdx, %
+    text width=4*\bit] {lvl};
+  \node (type) [right=0cm of lvl, %
+    text width=8*\bit] {type};
+  \node (etype) [right=0cm of type, %
+    text width=8*\bit] {etype};
+  \node (E) [right=0cm of etype, %
+    text width=1*\bit] {\footnotesize{E}};
+  \node (comp) [right=0cm of E, %
+    text width=7*\bit] {comp};
+  \node (psize) [right=0cm of comp, %
+    text width=7*\bit] {PSIZE};
+  \node (lsize) [right=0cm of psize, %
+    text width=25*\bit] {LSIZE};
+
+  \node (pad4)   [below right=0cm and 0cm of bdx.south west,%
+    label={[bit]left:7}] {padding};
+  \node (pad5)   [below = 0cm of pad4, label={[bit]left:8}] {padding};
+  \node (pbirth) [below = 0cm of pad5, label={[bit]left:9}] {physical birth txg};
+  \node (lbirth) [below = 0cm of pbirth, label={[bit]left:a}] {logical birth txg};
+  \node (fill)   [below = 0cm of lbirth, label={[bit]left:b}] {fill count};
+  \node (chk1)   [below = 0cm of fill, label={[bit]left:c}] {checksum[0]};
+  \node (chk2)   [below = 0cm of chk1, label={[bit]left:d}] {checksum[1]};
+  \node (chk3)   [below = 0cm of chk2, label={[bit]left:e}] {checksum[2]};
+  \node (chk4)   [below = 0cm of chk3, label={[bit]left:f}] {checksum[3]};
+\end{tikzpicture}

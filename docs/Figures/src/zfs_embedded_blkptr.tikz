@@ -1,0 +1,60 @@
+\def\bit{.225cm}
+\begin{tikzpicture}[%
+    every node/.style = {
+      rectangle,
+      draw=blkptr_li_color, fill=blkptr_bg_color, text=blkptr_ru_color,
+      text width=64*\bit, minimum height=.5cm,
+      outer sep=0pt, inner sep=0pt,
+      font=\small\ttfamily,
+      align=center,
+    }
+  ]
+  \newcounter{prev}
+  \setcounter{prev}{1}
+  \foreach \i in {0,...,8} {
+    \pgfmathtruncatemacro{\l}{(8-\i)*8}
+    \draw (\i*\bit*8,0) -- node [bit, above, align=center] {\l} ++(0,.15cm);
+  }
+  \node at (0,0) (payload1) [label={[bit]left:0}, anchor=north west] {payload};
+  \foreach \i in {2,...,6}  {
+    %\pgfmathtruncatemacro{\l}{8*\i}
+    \pgfmathtruncatemacro{\l}{\i-1}
+    \node (payload\i) [below=0cm of {payload\theprev},%
+      label={[bit]left:\l}] {payload};
+    \addtocounter{prev}{1}
+  }
+  \node (bdx) [below right=0cm and 0cm of payload6.south west, %
+    text width=4*\bit, label={[bit]left:6}] {BDX};
+  \node (lvl) [right=0cm of bdx, %
+    text width=4*\bit] {lvl};
+  \node (type) [right=0cm of lvl, %
+    text width=8*\bit] {type};
+  \node (etype) [right=0cm of type, %
+    text width=8*\bit] {etype};
+  \node (E) [right=0cm of etype, %
+    text width=1*\bit] {\footnotesize{E}};
+  \node (comp) [right=0cm of E, %
+    text width=7*\bit] {comp};
+  \node (psize) [right=0cm of comp, %
+    text width=7*\bit] {PSIZE};
+  \node (lsize) [right=0cm of psize, %
+    text width=25*\bit] {LSIZE};
+  \node (payload7) [below right=0cm and 0cm of bdx.south west,%
+    label={[bit]left:7}] {payload};
+  \addtocounter{prev}{1}
+  \foreach \i in {8,9} {
+    \pgfmathtruncatemacro{\l}{\i}
+    \node (payload\i) [below=0cm of {payload\theprev},%
+      label={[bit]left:\l}] {payload};
+    \addtocounter{prev}{1}
+  }
+  \node (birth) [below=0cm of payload9, label={[bit]left:a}] {logical birth txg};
+  \node (payload10) [below=0cm of birth, label={[bit]left:b}] {payload};
+  \addtocounter{prev}{1}
+  \foreach \i in {11,...,14} {
+    \pgfmathtruncatemacro{\l}{\i+1}
+    \node (payload\i) [below=0cm of {payload\theprev},%
+      label={[bit]left:\pgfmathhex{\l}\pgfmathresult}] {payload};
+    \addtocounter{prev}{1}
+  }
+\end{tikzpicture}

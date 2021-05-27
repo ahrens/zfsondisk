@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html$if(lang)$ lang="$lang$"$endif$$if(dir)$ dir="$dir$"$endif$>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+$for(author-meta)$
+  <meta name="author" content="$author-meta$">
+$endfor$
+$if(date-meta)$
+  <meta name="dcterms.date" content="$date-meta$">
+$endif$
+$if(keywords)$
+  <meta name="keywords" content="$for(keywords)$$keywords$$sep$, $endfor$">
+$endif$
+  <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
+  <style type="text/css">code{white-space: pre;}</style>
+$if(quotes)$
+  <style type="text/css">q { quotes: "“" "”" "‘" "’"; }</style>
+$endif$
+$if(highlighting-css)$
+  <style type="text/css">
+$highlighting-css$
+  </style>
+$endif$
+$for(css)$
+  <link rel="stylesheet" href="$css$">
+$endfor$
+$if(math)$
+  $math$
+$endif$
+<style type="text/css">
+  /* CSS counter */
+  html {
+      counter-reset: $for(amsthm.plain)$$amsthm.plain$ $endfor$$for(amsthm.definition)$$amsthm.definition$ $endfor$$for(amsthm.remark)$$amsthm.remark$ $endfor$;
+  }
+  /* style of "before" */
+  /** before plain or definition **/
+  $for(amsthm.plain)$.$amsthm.plain$:before,$endfor$$for(amsthm.plain-unnumbered)$.$amsthm.plain-unnumbered$:before,$endfor$$for(amsthm.definition)$.$amsthm.definition$:before,$endfor$$for(amsthm.definition-unnumbered)$.$amsthm.definition-unnumbered$:before,$endfor$.proof:before
+  {
+      font-weight:700;
+      font-style:normal
+  }
+  /** before remark or proof **/
+  $for(amsthm.remark)$.$amsthm.remark$:before,$endfor$$for(amsthm.remark-unnumbered)$.$amsthm.remark-unnumbered$:before,$endfor$.proof:before
+  {
+      font-style:italic
+  }
+  /* content of "before" (everything goes here) */
+  $for(amsthm.plain)$
+  .$amsthm.plain$:before
+  {
+      counter-increment: $amsthm.plain$;
+      content:"$amsthm.plain$ " counter($amsthm.plain$) ". "
+  }
+  $endfor$
+  $for(amsthm.plain-unnumbered)$
+  .$amsthm.plain-unnumbered$:before
+  {
+      content:"$amsthm.plain-unnumbered$."
+  }
+  $endfor$
+  $for(amsthm.definition)$
+  .$amsthm.definition$:before
+  {
+      counter-increment: $amsthm.definition$;
+      content:"$amsthm.definition$ " counter($amsthm.definition$) ". "
+  }
+  $endfor$
+  $for(amsthm.definition-unnumbered)$
+  .$amsthm.definition-unnumbered$:before
+  {
+      content:"$amsthm.definition-unnumbered$."
+  }
+  $endfor$
+  $for(amsthm.remark)$
+  .$amsthm.remark$:before
+  {
+      counter-increment: $amsthm.remark$;
+      content:"$amsthm.remark$ " counter($amsthm.remark$) ". "
+  }
+  $endfor$
+  $for(amsthm.remark-unnumbered)$
+  .$amsthm.remark-unnumbered$:before
+  {
+      content:"$amsthm.remark-unnumbered$."
+  }
+  $endfor$
+  .proof:before
+  {
+      content:"证明：";
+      font-family: "Kaiti SC";
+      font-weight: bold;
+      font-style: normal;
+      text-decoration: underline;
+  }
+  /* QED */
+  .proof:after
+  {
+      /* content: "\25FB"; */
+      content: "【证毕】";
+      float:right;
+      font-family: "Kaiti SC";
+      font-weight: bold;
+      font-style: normal;
+  }
+  /* main style */
+  /** plain **/
+  $for(amsthm.plain)$.$amsthm.plain$,$endfor$$for(amsthm.plain-unnumbered)$.$amsthm.plain-unnumbered$,$endfor$,.proof
+  {
+      display: block;
+      margin:  12px 0;
+      font-style:italic
+  }
+  /** definition, remark or proof **/
+  $for(amsthm.definition)$.$amsthm.definition$,$endfor$$for(amsthm.definition-unnumbered)$.$amsthm.definition-unnumbered$,$endfor$$for(amsthm.remark)$.$amsthm.remark$,$endfor$$for(amsthm.remark-unnumbered)$.$amsthm.remark-unnumbered$,$endfor$,.proof
+  {
+      display: block;
+      margin:  12px 0;
+      font-style:normal;
+  }
+</style>
+
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body>
+$for(include-before)$
+$include-before$
+$endfor$
+<article>
+$if(title)$
+<header>
+<h1 class="title">$title$</h1>
+$if(subtitle)$
+<p class="subtitle">$subtitle$</p>
+$endif$
+$if(date)$
+<!--
+<p class="byline">$date$$if(author)$ &ndash; $author$$endif$</p>
+-->
+<p class="byline">$if(author)$$author$$endif$</p>
+<p class="byline">$date$</p>
+$else$
+$if(author)$
+<p class="byline">$author$</p>
+$endif$
+$endif$
+</header>
+$endif$
+$if(toc)$
+<nav id="$idprefix$TOC">
+$toc$
+</nav>
+$endif$
+$body$
+</article>
+$for(include-after)$
+$include-after$
+$endfor$
+</body>
+</html>
