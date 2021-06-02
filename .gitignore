@@ -1,0 +1,4 @@
+docs/Figures/*.pdf
+docs/Figures/*.aux
+docs/Figures/*.log
+docs/Figures/src/*.tex

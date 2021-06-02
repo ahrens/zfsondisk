@@ -1,0 +1,28 @@
+\begin{tikzpicture}[%
+  every node/.style = {
+    outer sep=0pt,
+    minimum width=1.5cm, minimum height=1cm,
+    text width=1.5cm, align=center,
+    draw=ds_li_color, fill=ds_bg_color,
+    font=\sffamily
+  },
+  abovelabel/.style = {
+    draw=none, fill=none,
+    font=\small\ttfamily,
+    yshift=-.2cm
+  }
+]
+  \node (l0) {L0};
+  \node (l1)   [right=0cm of l0] {L1};
+  \node (boot) [right=0cm of l1, minimum width=3cm] {Boot Block};
+  \node (data) [right=0cm of boot, minimum width=4.5cm] {};
+  \node (l2)   [right=0cm of data] {L2};
+  \node (l3)   [right=0cm of l2] {L3};
+
+  \draw (l0.north west) -- ++(0,.2cm) node [above, abovelabel]{$0$};
+  \draw (l1.north west) -- ++(0,.2cm) node [above, abovelabel]{$256K$};
+  \draw (l1.north east) -- ++(0,.2cm) node [above, abovelabel]{$512K$};
+  \draw (boot.north east) -- ++(0,.2cm) node [above, abovelabel]{$4M$};
+  \draw (l2.north west) -- ++(0,.2cm) node [above, abovelabel]{$N-512K$};
+  \draw (l2.north east) -- ++(0,.2cm) node [above, abovelabel]{$N-256K$};
+\end{tikzpicture}

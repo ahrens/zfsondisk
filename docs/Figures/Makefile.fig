@@ -2,7 +2,10 @@ FIGURES_PDF =	zfs_label.pdf			\
 		zfs_blkptr.pdf			\
 		zfs_embedded_blkptr.pdf		\
 		zfs_vdev.pdf			\
+		zfs_vdev_label.pdf		\
+		zfs_vdev_tree.pdf		\
 		zfs_ub.pdf			\
+		zfs_ub_expanded.pdf		\
 		zfs_mos.pdf			\
 		zfs_fs.pdf			\
 		zfs_indirect.pdf		

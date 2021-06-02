@@ -32,6 +32,8 @@
 \usepackage[export]{adjustbox}
 \usepackage{capt-of}
 
+\usepackage{nameref}
+
 \usepackage{verbatim} % For comment environment and sth else
 
 \usepackage{tikz}
@@ -84,6 +86,7 @@
   \setulmargins{4cm}{*}{*}
   \setlrmargins{1in}{*}{*}
   \addtolength{\cftbeforesectionskip}{2pt}
+  \setsecnumdepth{subsection}
   \checkandfixthelayout
 }{%
   \usepackage[twoside, inner=2.4cm, outer=4.4cm]{geometry}
@@ -157,3 +160,4 @@
 %   columns  = fullflexible,
 %   keepspaces,
 % }
+\renewcommand{\figurename}{Illustration}

@@ -1,0 +1,41 @@
+\begin{tikzpicture}[%
+  every node/.style={
+    draw=none,
+    outer sep=0pt, inner ysep=1pt, inner xsep=3pt,
+    font=\itshape\rmfamily
+  },
+]
+  \node (root)   [draw, minimum width=12cm, minimum height=8cm, fill=vdevtree_bg_color] {};
+  \node (type)   [below right=0cm and 0cm of root.north west] {type = `mirror'};
+  \node (id)     [below right=0cm and 0cm of type.south west] {id = 1};
+  \node (guid)   [below right=0cm and 0cm of id.south west] {guid = 16593009660401351626};
+  \node (metaarray)   [below right=0cm and 0cm of guid.south west] %
+        {metaslab\_array = 13};
+  \node (metashift)   [below right=0cm and 0cm of metaarray.south west] %
+        {metaslab\_shift = 22};
+  \node (ashift) [below right=0cm and 0cm of metashift.south west] {ashift = 9};
+  \node (asize)  [below right=0cm and 0cm of ashift.south west] {asize = 519569408};
+  \node (child0) [below right=0.1cm and 0cm of asize.south west] {child[0] = };
+  \node (child0_tree) [draw, below right=.1cm and .5cm of child0.south west, %
+    minimum width=11.25cm, minimum height=2cm, fill=vdevtree_child0_bg_color] {};
+  \node (child0_type) [below right=0cm and 0cm of child0_tree.north west] {type = `disk'};
+  \node (child0_id)   [below right=0cm and 0cm of child0_type.south west] {id = 2};
+  \node (child0_guid) [below right=0cm and 0cm of child0_id.south west] {guid = 6649981596953412974};
+  \node (child0_path) [below right=0cm and 0cm of child0_guid.south west] {path = `/dev/dsk/c4t0d0'};
+  \node (child0_devid)[below right=0cm and 0cm of child0_path.south west] %
+        {devid = `id1,sd@SSEAGATE\_ST373453LW\_3HW0J0FJ00007404E4NS/a'};
+
+  \node (child1) [below right=2.2cm and 0cm of child0.south west] {child[1] = };
+  \node (child1_tree) [draw, below right=.1cm and .5cm of child1.south west, %
+    minimum width=11.25cm, minimum height=2cm, fill=vdevtree_child1_bg_color] {};
+  \node (child1_type) [below right=0cm and 0cm of child1_tree.north west] {type =`disk'};
+  \node (child1_id)   [below right=0cm and 0cm of child1_type.south west] {id = 3};
+  \node (child1_guid) [below right=0cm and 0cm of child1_id.south west] {guid = 3648040300193291405};
+  \node (child1_path) [below right=0cm and 0cm of child1_guid.south west] {path = `/dev/dsk/c4t1d0'};
+  \node (child1_devid)[below right=0cm and 0cm of child1_path.south west] %
+        {devid = `id1,sd@SSEAGATE\_ST373453LW\_3HW0HLAW0007404D6MN/a'};
+
+  \node [font=\small\rmfamily, below left=0cm and 0cm of root.north east] {vdev\_tree};
+  \node [font=\small\rmfamily, below left=0cm and 0cm of child0_tree.north east] {vdev\_tree};
+  \node [font=\small\rmfamily, below left=0cm and 0cm of child1_tree.north east] {vdev\_tree};
+\end{tikzpicture}

@@ -1,8 +1,8 @@
 \begin{tikzpicture}[%
-    pics/.cd,
     every node/.style = {
-      outer sep=0pt, inner sep = 0pt
+      font=\small\sffamily
     },
+    pics/.cd,
     disk/.style = {
       code = {
         \fill [white] ellipse [x radius = 1, y radius = 1/3];
@@ -28,24 +28,32 @@
     }
   ]
   \node (root) [draw, minimum width=2.5cm, minimum height=1.25cm] {root vdev};
-  \node (mirror1) [draw, minimum width=3cm, minimum height=1.5cm, text width = 3cm, align=center,%
-                   below left=.75cm and 1cm of root.south] {top level vdev\\(M1 D1/D2)};
+  % FIXME: hack! mirror1 will be redrawn after the related node is drawn.
+  \node (mirror1) [minimum width=3cm, minimum height=1.5cm, text width = 3cm, align=center,%
+                   below left=.75cm and 1cm of root.south] {};
   \node (mirror2) [draw, minimum width=3cm, minimum height=1.5cm, text width = 3cm, align=center,%
-                   below right=.75 and 1cm of root.south] {top level vdev\\(M2 D3/D4)};
+                   below right=.75 and 1cm of root.south] {``M2''\\top level vdev\\(Mirror C/D)};
   \path ($(mirror1.south) - (1.25cm,1.75cm)$)  pic [local bounding box=D1] (d1) {disk};
   \path ($(mirror1.south) - (-1.25cm,1.75cm)$) pic [local bounding box=D2] (d2) {disk};
   \path ($(mirror2.south) - (1.25cm,1.75cm)$)  pic [local bounding box=D3] (d3) {disk};
   \path ($(mirror2.south) - (-1.25cm,1.75cm)$) pic [local bounding box=D4] (d4) {disk};
   \node (logical)  [draw, densely dashed, fit=(root)(mirror1)(mirror2),inner sep=7.5pt] {};
-  \node (related) [draw, thick, densely dotted, fit=(mirror1)(D1)(D2),inner sep=7.5pt] {};
+  \node (related) [draw, thick, densely dotted, fit=(mirror1)(D1)(D2),inner sep=7.5pt%
+    , fill=yellow, opacity=0.3] {};
+
+  \node (mirror1) [draw, minimum width=3cm, minimum height=1.5cm, text width = 3cm, align=center,%
+    below left=.75cm and 1cm of root.south] {``M1''\\top level vdev\\(Mirror A/B)};
+  \path ($(mirror1.south) - (1.25cm,1.75cm)$)  pic [local bounding box=D1] (d1) {disk};
+  \path ($(mirror1.south) - (-1.25cm,1.75cm)$) pic [local bounding box=D2] (d2) {disk};  
+  
   \node (physical) [draw, thick, dashed, fit=(D1)(D2)(D3)(D4), yshift=-5pt, inner sep=15pt] {};
   \node [below left = 0cm and 0cm of logical.north east] {Logical Vdevs};
   \node [above right=0cm and 0cm of related.north west, rotate=-90] {Related Vdevs};
   \node [above left=0cm and 0cm of physical.south east] {Physical Vdevs};
-  \node at (D1) [text=gray!80,yshift=-5pt]{D1};
-  \node at (D2) [text=gray!80,yshift=-5pt]{D2};
-  \node at (D3) [text=gray!80,yshift=-5pt]{D3};
-  \node at (D4) [text=gray!80,yshift=-5pt]{D4};
+  \node at (D1) [text=gray!100, text width=1.5cm, align=center]{``A''\\vdev\\(disk)};
+  \node at (D2) [text=gray!100, text width=1.5cm, align=center]{``B''\\vdev\\(disk)};
+  \node at (D3) [text=gray!100, text width=1.5cm, align=center]{``C''\\vdev\\(disk)};
+  \node at (D4) [text=gray!100, text width=1.5cm, align=center]{``D''\\vdev\\(disk)};
 
   \draw ($(root.south west)!1/5!(root.south east)$) -- ($(mirror1.north east)!1/5!(mirror1.north west)$);
   \draw ($(root.south east)!1/5!(root.south west)$) -- ($(mirror2.north west)!1/5!(mirror2.north east)$);
