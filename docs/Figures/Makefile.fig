@@ -8,4 +8,7 @@ FIGURES_PDF =	zfs_label.pdf			\
 		zfs_ub_expanded.pdf		\
 		zfs_mos.pdf			\
 		zfs_fs.pdf			\
-		zfs_indirect.pdf		
+		zfs_indirect.pdf		\
+		zfs_dsl_infra.pdf		\
+		zfs_dnode_phys.pdf		\
+		zfs_3levels.pdf		

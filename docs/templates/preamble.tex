@@ -1,5 +1,6 @@
 \usepackage{calc}
 \usepackage[dvipsnames]{xcolor}
+\usepackage[noframe]{showframe}
 
 % Hyperlink
 \usepackage[%
@@ -72,7 +73,12 @@
 % Helvetica for sans serif
 \usepackage[scaled]{helvet}
 \usepackage[T1]{fontenc}
-\setmonofont{Ubuntu Mono}
+\setmonofont[
+  Path=/home/luke/Projects/Luke/pandoctools/fonts/,
+  ItalicFont=UbuntuMono-RI.ttf,
+  BoldFont=UbuntuMono-B.ttf,
+  BoldItalicFont=UbuntuMono-BI.ttf
+]{UbuntuMono-R.ttf}
 
 \makeatletter
 \@ifclassloaded{memoir}{%
@@ -116,16 +122,10 @@
 
 \makeatletter
 \lstset{language=C++,
-  basicstyle=\lst@ifdisplaystyle\ttfamily\footnotesize\else\color{Bittersweet}\ttfamily\footnotesize\fi,
+  %basicstyle=\lst@ifdisplaystyle\ttfamily\footnotesize\else\color{Bittersweet}\ttfamily\footnotesize\fi,
+  basicstyle=\lst@ifdisplaystyle\ttfamily\else\color{Bittersweet}\ttfamily\fi,
   backgroundcolor=\color{lstbg},
   keywordstyle=\color{lstkeyword},
-  %emph={int,char,double,float,unsigned,void,bool},
-  %emphstyle=\color{lstkeywordR},
-  % classoffset=1,
-  % otherkeywords={>,<,.,;,-,!,=,~},
-  % morekeywords={>,<,.,;,-,!,=,~},
-  % keywordstyle=\color{lstkeywordO},
-  % classoffset=0,
   stringstyle=\color{lststring},
   commentstyle=\ttfamily\color{lstcomment},
   captionpos=b,
@@ -154,10 +154,8 @@
   morekeywords={setcar, setcdr, nthcdr},
 }
 
-% \lstset{
-%   language = Bash,
-%   literate = {\$\#}{{{\#}}}2,
-%   columns  = fullflexible,
-%   keepspaces,
-% }
 \renewcommand{\figurename}{Illustration}
+
+\usepackage{makecell}
+\renewcommand\theadfont{\normalsize}
+\setcellgapes{50pt}

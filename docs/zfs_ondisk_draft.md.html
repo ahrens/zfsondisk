@@ -5,8 +5,72 @@
   <meta name="generator" content="pandoc">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <meta name="author" content="Matthew Ahrens &lt;mahrens@delphix.com&gt;">
-  <title>ZFS On-disk Format</title>
+  <title>ZFS On-disk Specification (draft)</title>
   <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
   <link rel="stylesheet" href="styles/pandoc.css">
   <link rel="stylesheet" href="styles/tufte-extra.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js"></script>
@@ -86,28 +150,50 @@
 <body>
 <article>
 <header>
-<h1 class="title">ZFS On-disk Format</h1>
+<h1 class="title">ZFS On-disk Specification (draft)</h1>
 <!--
-<p class="byline">Wed 02 Jun 2021 04:28:43 PM EDT &ndash; Matthew Ahrens &lt;mahrens@delphix.com&gt;</p>
+<p class="byline">Fri Jul 9 04:05:59 PM EDT 2021 &ndash; Matthew Ahrens &lt;mahrens@delphix.com&gt;</p>
 -->
 <p class="byline">Matthew Ahrens &lt;mahrens@delphix.com&gt;</p>
-<p class="byline">Wed 02 Jun 2021 04:28:43 PM EDT</p>
+<p class="byline">Fri Jul 9 04:05:59 PM EDT 2021</p>
 </header>
 <nav id="TOC">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
-<li><a href="#vdevs-labels-and-boot-block">Vdevs, Labels, and Boot Block</a>
+<li><a href="#sec:vdev">Vdevs, Labels, and Boot Block</a>
 <ul>
 <li><a href="#virtual-devices">Virtual Devices</a></li>
 <li><a href="#vdev-labels">Vdev Labels</a></li>
 <li><a href="#sec:vdev_detail">Vdev Technical Details</a></li>
 <li><a href="#boot-block">Boot Block</a></li>
 </ul></li>
-<li><a href="#block-pointers-and-indirect-blocks">Block Pointers and Indirect Blocks</a>
+<li><a href="#sec:blkptr">Block Pointers and Indirect Blocks</a>
 <ul>
 <li><a href="#data-virtual-address">Data Virtual Address</a></li>
 <li><a href="#grid">GRID</a></li>
 <li><a href="#gang">GANG</a></li>
+<li><a href="#checksum">Checksum</a></li>
+<li><a href="#compression">Compression</a></li>
+<li><a href="#block-size">Block Size</a></li>
+<li><a href="#endian">Endian</a></li>
+<li><a href="#type">Type</a></li>
+<li><a href="#level">Level</a></li>
+<li><a href="#fill">Fill</a></li>
+<li><a href="#birth-transaction">Birth Transaction</a></li>
+<li><a href="#padding">Padding</a></li>
+</ul></li>
+<li><a href="#sec:dmu">Data Management Unit</a>
+<ul>
+<li><a href="#objects">Objects</a></li>
+<li><a href="#object-sets">Object Sets</a></li>
+</ul></li>
+<li><a href="#sec:dsl">Dataset and Snapshot Layer</a>
+<ul>
+<li><a href="#object-set-overview">Object Set Overview</a></li>
+<li><a href="#dsl-infrastructure">DSL Infrastructure</a></li>
+<li><a href="#dsl-implementation-details">DSL Implementation Details</a></li>
+<li><a href="#sec:ds_internals">Dataset Internals</a></li>
+<li><a href="#sec:dsl_dir_internals">DSL Directory Internals</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -149,7 +235,7 @@ ZPL (Chapter 6),
 ZIL (Chapter 7),
 ZVOL (Chapter 8).</p>
 </section>
-<section id="vdevs-labels-and-boot-block" class="level1">
+<section id="sec:vdev" class="level1">
 <h1>Vdevs, Labels, and Boot Block</h1>
 <section id="virtual-devices" class="level2">
 <h2>Virtual Devices</h2>
@@ -189,7 +275,7 @@ would contain information
 describing the following vdevs:
 “C”, “D”, and “M2”.
 The contents of the vdev label are described in greater detail
-in Section. 2.3,
+in secion  2.3,
 Vdev Technical Details.</p>
 <p>The vdev label serves two purposes:
 it provides access to a pool’s contents
@@ -257,14 +343,14 @@ and 128KB of 1K sized uberblock structures.
 The drawing below shows an expanded view of the L0 label.
 A detailed description of each components follows:
 blank space
-(Section. 2.3.1),
+(secion  2.3.1),
 boot block header
-(Section. 2.3.2),
+(secion  2.3.2),
 name/value pair list
-(Section. 2.3.3),
+(secion  2.3.3),
 and
 uberblock array
-array (Section. 2.3.4).</p>
+array (secion  2.3.4).</p>
 <section id="sec:blankspace" class="level3">
 <h3>Blank Space</h3>
 <p>ZFS supports both VTOC (Volume Table of Contents) and EFI disk labels
@@ -300,17 +386,17 @@ are contained within this 112KB portion of the vdev_label.</p>
 <table>
 <caption>Table 1: Name-Value Pairs within vdev_label</caption>
 <colgroup>
-<col style="width: 12%" />
 <col style="width: 14%" />
-<col style="width: 23%" />
-<col style="width: 50%" />
+<col style="width: 14%" />
+<col style="width: 27%" />
+<col style="width: 44%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th></th>
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Value</th>
-<th style="text-align: left;">Description</th>
+<th style="text-align: left;"><strong>Name</strong></th>
+<th style="text-align: left;"><strong>Value</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
 </tr>
 </thead>
 <tbody>
@@ -369,30 +455,30 @@ vdev witin this vdev’s subtree.</td>
 </table>
 </div>
 <div id="tbl:pool_states">
-<table style="width:57%;">
+<table style="width:54%;">
 <caption>Table 2: Pool States</caption>
 <colgroup>
 <col style="width: 38%" />
-<col style="width: 18%" />
+<col style="width: 15%" />
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">State</th>
-<th style="text-align: left;">Value</th>
+<th style="text-align: left;"><strong>State</strong></th>
+<th style="text-align: right;"><strong>Value</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">POOL_STATE_ACTIVE</td>
-<td style="text-align: left;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">POOL_STATE_EXPORTED</td>
-<td style="text-align: left;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">POOL_STATE_DESTROYED</td>
-<td style="text-align: left;">2</td>
+<td style="text-align: right;">2</td>
 </tr>
 </tbody>
 </table>
@@ -411,15 +497,15 @@ earlier in this document.</p>
 <table>
 <caption>Table 3: Vdev Tree NV List Entries</caption>
 <colgroup>
-<col style="width: 18%" />
+<col style="width: 21%" />
 <col style="width: 31%" />
-<col style="width: 49%" />
+<col style="width: 46%" />
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Value</th>
-<th style="text-align: left;">Description</th>
+<th style="text-align: left;"><strong>Name</strong></th>
+<th style="text-align: left;"><strong>Value</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
 </tr>
 </thead>
 <tbody>
@@ -482,6 +568,9 @@ vdev_tree element.</td>
 </section>
 <section id="sec:ub" class="level3">
 <h3>The Uberblock</h3>
+<figure>
+<img src="Figures/zfs_ub_expanded.svg" id="fig:ub_expanded" alt="Figure 4: Uberblock array showing uberblock contents" /><figcaption aria-hidden="true">Figure 4: Uberblock array showing uberblock contents</figcaption>
+</figure>
 <p>Immediately following the nvpair lists in the vdev label is an array of <em>uberblocks</em>.
 The uberblock is the portion of the label
 containing information necessary to access the contents of the pool<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>.
@@ -497,71 +586,74 @@ the transaction group number and timestamps are incremented
 thereby making it the new active uberblock in a single atomic action.
 Uberblocks are written in a round robin fashion across the various vdevs with the pool.
 The Illustration. 4 has an expanded view of two uberblocks within an uberblock array.</p>
-<figure>
-<img src="Figures/zfs_ub_expanded.svg" id="fig:ub_expanded" alt="Figure 4: Uberblock array showing uberblock contents" /><figcaption aria-hidden="true">Figure 4: Uberblock array showing uberblock contents</figcaption>
-</figure>
 <section id="uberblock-technical-details" class="level4">
 <h4>Uberblock Technical Details</h4>
 <p>The uberblock is stored in the machine’s native endian format and has the following contents:</p>
-<ul>
-<li><p><strong>ub_magic:</strong>
-The uberblock magic number is a 64 bit integer
+<dl>
+<dt>ub_magic:</dt>
+<dd><p>The uberblock magic number is a 64 bit integer
 used to identify a device as containing ZFS data.
 The value of the ub_magic is <span class="math inline">0x00bab10c</span> (oo-ba-block).
 The Table. 4 shows the ub_magic number as seen on disk.</p>
 <div id="tbl:endianess_ub">
-<table style="width:56%;">
+<table style="width:64%;">
 <caption>Table 4: Uberblock values per machine endian type</caption>
 <colgroup>
-<col style="width: 31%" />
-<col style="width: 23%" />
+<col style="width: 30%" />
+<col style="width: 33%" />
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Machine Endianess</th>
-<th style="text-align: left;">Uberblock Value</th>
+<th><strong>Machine Endianess</strong></th>
+<th style="text-align: right;"><strong>Uberblock Value</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Big Endian</td>
-<td style="text-align: left;"><code>0x00bab10c</code></td>
+<td>Big Endian</td>
+<td style="text-align: right;"><code>0x00bab10c</code></td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Little Endian</td>
-<td style="text-align: left;"><code>0x0cb1ba00</code></td>
+<td>Little Endian</td>
+<td style="text-align: right;"><code>0x0cb1ba00</code></td>
 </tr>
 </tbody>
 </table>
-</div></li>
-<li><p><strong>ub_version:</strong>
-The version field is used to identify the on-disk format in which this data is laid out.
+</div>
+</dd>
+<dt>ub_version:</dt>
+<dd>The version field is used to identify the on-disk format in which this data is laid out.
 The current on-disk format version number is 0x1 (5000?).
 This field contains the same value
-as the “version” element of the name/value pairs described in Section. 2.3.3.</p></li>
-<li><p><strong>ub_txg:</strong>
-All writes in ZFS are done in transaction groups.
+as the “version” element of the name/value pairs described in secion  2.3.3.
+</dd>
+<dt>ub_txg:</dt>
+<dd>All writes in ZFS are done in transaction groups.
 Each group has an associated transaction group number.
 The ub_txg value reflects the transaction group in which
 this uberblock was written.
 The ub_txg number must be greater than or equal to the “txg” number
-stored in the nvlist for this label to be valid.</p></li>
-<li><p><strong>ub_guid_sum:</strong>
-The ub_guid_sum is used to verify the availability of vdevs within a pool.
+stored in the nvlist for this label to be valid.
+</dd>
+<dt>ub_guid_sum:</dt>
+<dd>The ub_guid_sum is used to verify the availability of vdevs within a pool.
 When a pool is opened,
 ZFS traverses all leaf vdevs within the pool
 and totals a running sum of all the GUIDs
-(a vdev’s guid is stored in the guid nvpair entry, see Section. 2.3.3) it encounters.
+(a vdev’s guid is stored in the guid nvpair entry, see secion  2.3.3) it encounters.
 This computed sum is checked against the ub_guid_sum
-to verify the availability of all vdevs within this pool.</p></li>
-<li><p><strong>ub_timestamp:</strong>
-Coordinated Universal Time (UTC) when
-this uberblock wasf written in seconds since January 1st 1970 (GMT).</p></li>
-<li><p><strong>ub_rootbp:</strong>
-The ub_rootbp is a blkptr structure containing the location of the MOS.
+to verify the availability of all vdevs within this pool.
+</dd>
+<dt>ub_timestamp:</dt>
+<dd>Coordinated Universal Time (UTC) when
+this uberblock wasf written in seconds since January 1st 1970 (GMT).
+</dd>
+<dt>ub_rootbp:</dt>
+<dd>The ub_rootbp is a blkptr structure containing the location of the MOS.
 Both the MOS and blkptr structures are described in later chapters of this document:
-Chapters 4 and 2 respectively.</p></li>
-</ul>
+chapters  5 and  3 respectively.
+</dd>
+</dl>
 </section>
 </section>
 </section>
@@ -572,7 +664,7 @@ Chapters 4 and 2 respectively.</p></li>
 The contents of this block will be described in a future appendix of this paper.</p>
 </section>
 </section>
-<section id="block-pointers-and-indirect-blocks" class="level1">
+<section id="sec:blkptr" class="level1">
 <h1>Block Pointers and Indirect Blocks</h1>
 <p>Data is transferred between disk and main memory in units called blocks.
 A block pointer (<code>blkptr_t</code>) is a 128 byte ZFS structure used
@@ -638,6 +730,878 @@ several smaller blocks will be allocated
 and a gang block will be created to contain the block pointers for the allocated blocks.
 A pointer to this gang block is returned to the requester,
 giving the requester the perception of a single block.</p>
+<p>Gang blocks are identified by the “G” bit.</p>
+<div id="tbl:gang_values">
+<table style="width:53%;">
+<caption>Table 5: Gang Block Values</caption>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 26%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><strong>“G” bit value</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td style="text-align: left;">non-gang block</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td style="text-align: left;">gang block</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Gang blocks are 512 byte sized,
+self checksumming blocks.
+A gang block contains up to 3 block pointers
+followed by a 32 byte checksum.
+The format of the gang block is described by the following structures.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">typedef</span> <span class="kw">struct</span> zio_gbh {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>    blkptr_t        zg_blkptr[SPA_GBH_NBLKPTRS];</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>    <span class="dt">uint64_t</span>        zg_filler[SPA_GBH_FILLER];</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>    zio_eck_t       zg_tail;</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>} zio_gbh_phys_t;</span></code></pre></div>
+<dl>
+<dt>zg_blkptr:</dt>
+<dd>Array of block pointers. Each 512 byte gang block can hold up to 3 block pointers.
+</dd>
+<dt>zg_filler:</dt>
+<dd>The filler fields pads out the gang block so that it is nicely byte aligned.
+</dd>
+</dl>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">typedef</span> <span class="kw">struct</span> zio_eck {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>    <span class="dt">uint64_t</span>    zec_magic;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>    zio_cksum_t zec_cksum;</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>} zio_eck_t;</span></code></pre></div>
+<dl>
+<dt>zec_magic:</dt>
+<dd>ZIO block tail magic number.
+The value is <code>0x210da7ab10c7a11</code> (zio-data-bloc-tail).
+</dd>
+</dl>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">typedef</span> <span class="kw">struct</span> zio_cksum {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>    <span class="dt">uint64_t</span>    zc_word[<span class="dv">4</span>];</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>} zio_cksum_t;</span></code></pre></div>
+<dl>
+<dt>zc_word:</dt>
+<dd>Four 8 byte words containing the checksum for this gang block.
+</dd>
+</dl>
+</section>
+<section id="checksum" class="level2">
+<h2>Checksum</h2>
+<p>By default ZFS checksums all of its data and metadata.
+ZFS supports several algorithms for checksumming including fletcher2, fletcher4,
+and SHA-256 (256-bit Secure Hash Algorithm in FIPS 180-2,
+available at <a href="http://csrc.nist.gov/cryptval">http://csrc.nist.gov/cryptval</a>).
+The algorithm used to checksum this block
+is identified by the 8 bit integer stored in the cksum portion of the block pointer. The
+following table pairs each integer with a description and algorithm
+used to checksum this block’s contents.</p>
+<div id="tbl:chksum_values">
+<table style="width:64%;">
+<caption>Table 6: Checksum Values and associated algorithms</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 18%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Description</strong></th>
+<th style="text-align: center;"><strong>Value</strong></th>
+<th style="text-align: right;"><strong>Algorithm</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">on</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">fletcher2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">off</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: right;">none</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">label</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: right;">SHA-256</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">gang header</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: right;">SHA-256</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">zilog</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: right;">fletcher2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fletcher2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: right;">fletcher2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">fletcher4</td>
+<td style="text-align: center;">7</td>
+<td style="text-align: right;">fletcher4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SHA-256</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">SHA-256</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">zilog2</td>
+<td style="text-align: center;">9</td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">noparity</td>
+<td style="text-align: center;">10</td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SHA-512</td>
+<td style="text-align: center;">11</td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">skein</td>
+<td style="text-align: center;">12</td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A 256 bit checksum of the data is computed for each block
+using the algorithm identified in cksum.
+If the cksum value is 2 (off),
+a checksum will not be computed
+and checksum[0], checksum[1], checksum[2], and checksum[3] will be zero.
+Otherwise,
+the 256 bit checksum computed for this block is stored
+in the checksum[0], checksum[1], checksum[2], and checksum[3] fields.</p>
+<p><em>Note:
+The computed checksum is always of the data,
+even if this is a gang block.
+Gang blocks (see above) and zilog blocks (see Chapter 8) are self checksumming.</em></p>
+</section>
+<section id="compression" class="level2">
+<h2>Compression</h2>
+<p>ZFS supports several algorithms for compression.
+The type of compression used to compress this block is stored
+in the comp portion of the block pointer.</p>
+<div id="tbl:comp_values">
+<table style="width:67%;">
+<caption>Table 7: Compression Values and associated algorithms</caption>
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 18%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Description</strong></th>
+<th style="text-align: right;"><strong>Value</strong></th>
+<th style="text-align: right;"><strong>Algorithm</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">on</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">lz4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">off</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">none</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lzjb</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">lzjb</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">empty</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">empty</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">gzip level 1~9</td>
+<td style="text-align: right;">5~13</td>
+<td style="text-align: right;">gzip1~9</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">zle</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">zle</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lz4</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">lz4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">zstd</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">zstd</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="block-size" class="level2">
+<h2>Block Size</h2>
+<p>The size of a block is described by three different fields in the block pointer;
+<em>psize</em>, <em>lsize</em>, and <em>asize</em>.</p>
+<dl>
+<dt>lsize:</dt>
+<dd>Logical size. The size of the data without compression, raidz or gang overhead.
+</dd>
+<dt>psize:</dt>
+<dd>Physical size of the block on disk after compression.
+</dd>
+<dt>asize:</dt>
+<dd>Allocated size,
+total size of all blocks allocated to hold this data
+including any gang headers or raid-Z parity information
+</dd>
+</dl>
+<p>If compression is turned off and ZFS is not on Raid-Z storage,
+lsize, asize, and psize will all be equal.</p>
+<p>All sizes are stored as the number of 512 byte sectors (minus one)
+needed to represent the size of this block.</p>
+</section>
+<section id="endian" class="level2">
+<h2>Endian</h2>
+<p>ZFS is an adaptive-endian filesystem
+(providing the restrictions described in Chapter One)
+that allows for moving pools across machines with different architectures:
+little endian vs. big endian.
+The “E” portion of the block pointer indicates
+which format this block has been written out in.
+Block are always written out in the machine’s native endian format.</p>
+<div id="tbl:endian_values">
+<table style="width:40%;">
+<caption>Table 8: Endian Values</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Endian</strong></th>
+<th style="text-align: right;"><strong>Value</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Little Endian</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Big Endian</td>
+<td style="text-align: right;">2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>If a pool is moved to a machine with a different endian format,
+the contents of the block are byte swapped on read.</p>
+</section>
+<section id="type" class="level2">
+<h2>Type</h2>
+<p>The <em>type</em> portion of the block pointer indicates what type of data this block holds.
+The type can be the following values.
+More detail is provided in chapter  4 regarding object types.</p>
+<div id="tbl:obj_types">
+<table style="width:72%;">
+<caption>Table 9: Object Types</caption>
+<colgroup>
+<col style="width: 56%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">
+<strong>Type</strong></th>
+<th style="text-align: right;"><strong>Value</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_NONE</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_OBJECT_DIRECTORY</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_OBJECT_ARRAY</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_PACKED_NVLIST</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_NVLIST_SIZE</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_BPLIST</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_BPLIST_HDR</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_SPACE_MAP_HEADER</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_SPACE_MAP</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_INTENT_LOG</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DNODE</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_OBJSET</td>
+<td style="text-align: right;">11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DSL_DATASET</td>
+<td style="text-align: right;">12</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DSL_DATASET_CHILD_MAP</td>
+<td style="text-align: right;">13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_OBJSET_SNAP_MAP</td>
+<td style="text-align: right;">14</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DSL_PROPS</td>
+<td style="text-align: right;">15</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DSL_OBJSET</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_ZNODE</td>
+<td style="text-align: right;">17</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_ACL</td>
+<td style="text-align: right;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_PLAIN_FILE_CONTENTS</td>
+<td style="text-align: right;">19</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DIRECTORY_CONTENTS</td>
+<td style="text-align: right;">20</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_MASTER_NODE</td>
+<td style="text-align: right;">21</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DELETE_QUEUE</td>
+<td style="text-align: right;">22</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_ZVOL</td>
+<td style="text-align: right;">23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_ZVOL_PROP</td>
+<td style="text-align: right;">24</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="level" class="level2">
+<h2>Level</h2>
+<p>The <em>level</em> portion of the block pointer is the number of levels
+(number of block pointers
+which need to be traversed to arrive at this data.)
+See Chapter  4 for a more complete definition of level.</p>
+</section>
+<section id="fill" class="level2">
+<h2>Fill</h2>
+<p>The <em>fill</em> count describes the number of non-zero block pointers under this block pointer.
+The fill count for a data block pointer is 1,
+as it does not have any block pointers beneath it.
+The fill count is used slightly differently for block pointers of type DMU_OT_DNODE.
+For block pointers of this type,
+the fill count contains the number of free dnodes beneath this block pointer.
+For more information on dnodes see Chapter  4.</p>
+</section>
+<section id="birth-transaction" class="level2">
+<h2>Birth Transaction</h2>
+<p>The birth transaction stored in the “physical birth txg” and “logical birth txg”
+block pointer field is a 64 bit integer
+containing the transaction group number
+in which this block pointer was allocated.</p>
+</section>
+<section id="padding" class="level2">
+<h2>Padding</h2>
+<p>The two padding fields in the block pointer are space reserved for future use.</p>
+</section>
+</section>
+<section id="sec:dmu" class="level1">
+<h1>Data Management Unit</h1>
+<p>The <em>Data Management Unit</em> (<em>DMU</em>) consumes blocks and groups them into logical units called objects.
+Objects can be further grouped by the DMU into object sets.
+Both objects and object sets are described in this chapter.</p>
+<section id="objects" class="level2">
+<h2>Objects</h2>
+<p>With the exception of a small amount of infrastructure,
+described in chapters  2 and  3,
+everything in ZFS is an object. The following table lists existing ZFS object types;
+many of these types are described in greater detail in future chapters of this document.</p>
+<div id="tbl:dmu_obj_types">
+<table>
+<caption>Table 10: DMU Ojbect Types</caption>
+<colgroup>
+<col style="width: 43%" />
+<col style="width: 56%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_NONE</td>
+<td style="text-align: left;">Unallocated object</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_OBJECT_DIRECTORY</td>
+<td style="text-align: left;">DSL object directory ZAP object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_OBJECT_ARRAY</td>
+<td style="text-align: left;">Object used to store an array of object numbers.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_PACKED_NVLIST</td>
+<td style="text-align: left;">Packed nvlist object.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_SPACE_MAP</td>
+<td style="text-align: left;">SPA disk block usage list.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_INTENT_LOG</td>
+<td style="text-align: left;">Intent Log</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DNODE</td>
+<td style="text-align: left;">Object of dnodes (metadnode)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_OBJSET</td>
+<td style="text-align: left;">Collection of objects.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DSL_DATASET_CHILD_MAP</td>
+<td style="text-align: left;">DSL ZAP object containing child DSL directory information.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DSL_OBJSET_SNAP_MAP</td>
+<td style="text-align: left;">DSL ZAP object containing snapshot information for a dataset.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DSL_PROPS</td>
+<td style="text-align: left;">DSL ZAP properties object containing properties for
+a DSL dir object.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_BPLIST</td>
+<td style="text-align: left;">Block pointer list – used to store the “deadlist”:
+list of block pointers deleted since the last snapshot,
+and the “deferred free list” used for sync to convergence.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_BPLIST_HDR</td>
+<td style="text-align: left;">BPLIST header: stores the bplist_phys_t structure.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_ACL</td>
+<td style="text-align: left;">ACL (Access Control List) object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_PLAIN_FILE</td>
+<td style="text-align: left;">ZPL Plain file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DIRECTORY_CONTENTS</td>
+<td style="text-align: left;">ZPL Directory ZAP Object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_MASTER_NODE</td>
+<td style="text-align: left;">ZPL Master Node ZAP object:
+head object used to identify root directory,
+delete queue, and version for a filesystem.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DELETE_QUEUE</td>
+<td style="text-align: left;">The delete queue provides a list of deletes
+that were in-progress when the filesystem
+was force unmounted or as a result of a system failure
+such as a power outage.
+Upon the next mount of the filesystem,
+the delete queue is processed to remove the files/dirs
+that are in the delete queue.
+This mechanism is used to avoid
+leaking files and directories in the filesystem.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_ZVOL</td>
+<td style="text-align: left;">ZFS volume (ZVOL)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_ZVOL_PROP</td>
+<td style="text-align: left;">ZVOL properties</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Objects are defined by <span class="math inline">512</span> bytes structures called dnodes<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>.
+A dnode describes and organizes a collection of blocks making up an object.
+The dnode (<code>dnode_phys_t</code> structure),
+seen in the illustration below,
+contains several fixed length fields and two variable length fields.
+Each of these fields are described in detail below.</p>
+<figure>
+<img src="Figures/zfs_dnode_phys.svg" id="fig:zfs_dnode_phys" alt="Figure 7: dnode\_phys\_t structure" /><figcaption aria-hidden="true">Figure 7: dnode\_phys\_t structure</figcaption>
+</figure>
+<dl>
+<dt>dn_type:</dt>
+<dd>An <span class="math inline">8</span>-bit numeric value indicating an object’s type.
+See Table 8
+for a list of valid object types and their associated 8 bit identifiers.
+</dd>
+<dt>dn_indblkshift and dn_datablkszsec:</dt>
+<dd><p>ZFS supports variable data and indirect
+(see <code>dn_nlevels</code> below for a description of indirect blocks)
+block sizes ranging from <span class="math inline">512</span> bytes to <span class="math inline">128</span> Kbytes.</p>
+<dl>
+<dt>dn_indblkshift:</dt>
+<dd><span class="math inline">8</span>-bit numeric value containing the log (base <span class="math inline">2</span>) of the size (in bytes)
+of an indirect block for this object.
+</dd>
+<dt>dn_datablkszsec:</dt>
+<dd><span class="math inline">16</span>-bit numeric value containing the data block size (in bytes)
+divided by <span class="math inline">512</span> (size of a disk sector).
+This value can range between <span class="math inline">1</span> (for a <span class="math inline">512</span> byte block) and <span class="math inline">256</span>
+(for a <span class="math inline">128</span> Kbyte block).
+</dd>
+</dl>
+</dd>
+<dt>dn_nblkptr and dn_blkptr:</dt>
+<dd><p>dn_blkptr is a variable length field that can contains between one and three block pointers.
+The number of block pointers that
+the dnode contains is set at object allocation time
+and remains constant throughout the life of the dnode.</p>
+<dl>
+<dt>dn_nblkptr:</dt>
+<dd><span class="math inline">8</span>-bit numeric value containing the number of block pointers in this dnode.
+</dd>
+<dt>dn_blkptr:</dt>
+<dd>block pointer array containing dn_nblkptr block pointers
+</dd>
+</dl>
+</dd>
+<dt>dn_nlevels:</dt>
+<dd><p>dn_nlevels is an <span class="math inline">8</span>-bit numeric value containing
+the number of levels
+that make up this object.
+These levels are often referred to as levels of indirection.</p>
+<dl>
+<dt>Indirection</dt>
+<dd>
+</dd>
+</dl>
+<p>A dnode has a limited number (<code>dn_nblkptr</code>, see above) of block pointers
+to describe an object’s data.
+For a dnode using the largest data block size (<span class="math inline">128</span>KB)
+and containing the maximum number of block pointers (<span class="math inline">3</span>),
+the largest object size it can represent (without indirection) is
+<span class="math inline">384</span> KB: <span class="math inline">3 \times 128</span>KB = <span class="math inline">384</span>KB.
+To allow for larger objects, indirect blocks are used.
+An indirect block is a block containing block pointers.
+The number of block pointers that
+an indirect block can hold is dependent on the indirect block size
+(represented by <code>dn_indblkshift</code>)
+and can be calculated by dividing the indirect block size by the size of a blkptr (<span class="math inline">128</span> bytes).
+The largest indirect block (<span class="math inline">128</span>KB) can hold up to <span class="math inline">1024</span> block pointers.
+As an object’s size increases,
+more indirect blocks and levels of indirection are created.
+A new level of indirection is created once
+an object grows so large that it exceeds the capacity of the current level.
+ZFS provides up to six levels of indirection to support files up to <span class="math inline">2^{64}</span> bytes long.</p>
+<p>The illustration below shows an object with 3 levels of blocks (level 0, level 1, and level 2).
+This object has triple wide block pointers
+(dva1, dva2, and dva3) for metadata
+and single wide block pointers for its data
+(see Chapter  3 for a description of block pointer wideness).
+The blocks at level <span class="math inline">0</span> are data blocks.</p>
+<figure>
+<img src="Figures/zfs_3levels.svg" id="fig:blkptr_three_levels" alt="Figure 8: Object with 3 levels. Triple wide block pointers used for metadata; single wide block pointers used for data" /><figcaption aria-hidden="true">Figure 8: Object with 3 levels. Triple wide block pointers used for metadata; single wide block pointers used for data</figcaption>
+</figure>
+</dd>
+<dt>dn_maxblkid</dt>
+<dd><p>An object’s blocks are identified by block ids.
+The blocks in each level of indirection are numbered from <span class="math inline">0</span> to <span class="math inline">N</span>,
+where the first block at a given level is given an id of <span class="math inline">0</span>,
+the second an id of <span class="math inline">1</span>, and so forth.</p>
+<p>The dn_maxblkid field in the dnode is set to
+the value of the largest data (level zero) block id for this object.</p>
+<table>
+<colgroup>
+<col style="width: 6%" />
+<col style="width: 93%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td></td>
+<td style="text-align: left;">Note on Block Ids:
+Given a block id and level,
+ZFS can determine the exact branch of indirect blocks which contain the block.
+This calculation is done using the block id, block level,
+and number of block pointers in an indirect block.
+For example,
+take an object which has <span class="math inline">128</span>KB sized indirect blocks.
+An indirect block of this size can hold 1024 block pointers.
+Given a level 0 block id of <span class="math inline">16360</span>,
+it can be determined that block <span class="math inline">15</span> (block id <span class="math inline">15</span>) of level <span class="math inline">1</span> contains
+the block pointer for level <span class="math inline">0</span> blkid <span class="math inline">16360</span>.</td>
+</tr>
+<tr class="even">
+<td></td>
+<td style="text-align: left;"><span class="math display">
+level\ 1\ blkid = 16360 \% 1024 = 15
+</span>
+This calculation can be performed recursively up
+the tree of indirect blocks
+until the top level of indirection has been reached.</td>
+</tr>
+</tbody>
+</table>
+</dd>
+<dt>dn_secphys:</dt>
+<dd>The sum of all asize values for all block pointers (data and indirect) for this object.
+</dd>
+<dt>dn_bonus, dn_bonuslen, and dn_bonustype:</dt>
+<dd><p>The bonus buffer (dn_bonus) is defined as
+the space following a dnode’s block pointer array (dn_blkptr).
+The amount of space is dependent on object type and can range between <span class="math inline">64</span> and <span class="math inline">320</span> bytes.</p>
+<dl>
+<dt>dn_bonus_len:</dt>
+<dd>Length (in bytes) of the bonus buffer
+dn_bonus:
+</dd>
+<dd><code>dn_bonuslen</code> sized chunk of data.
+The format of this data is defined by dn_bonustype.
+dn_bonustype:
+</dd>
+<dd><p><span class="math inline">8</span>-bit numeric value identifying
+the type of data contained within the bonus buffer.
+The following table shows valid bonus buffer types
+and the structures which are stored in the bonus buffer.
+The contents of each of these structures will be discussed later in this specification.</p>
+<table style="width:100%;">
+<caption>Bonus Buffer Types and associated structures</caption>
+<colgroup>
+<col style="width: 35%" />
+<col style="width: 37%" />
+<col style="width: 17%" />
+<col style="width: 10%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Bonus Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+<th style="text-align: left;"><strong>Metadata</strong>
+<strong>Structure</strong></th>
+<th style="text-align: right;"><strong>Value</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_PACKED_NVLIST_SIZE</td>
+<td style="text-align: left;">Bonus buffer type containing
+size in bytes of a
+DMU_OT_PACKED_NVLIST
+object</td>
+<td style="text-align: left;">uint64_t</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_SPACE_MAP_HEADER</td>
+<td style="text-align: left;">Spa space map header</td>
+<td style="text-align: left;">space_map_obj_t</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_DSL_DIR</td>
+<td style="text-align: left;">DSL Directory object used
+to define relationships and
+properties between related
+datasets</td>
+<td style="text-align: left;">dsl_dir_phys_t</td>
+<td style="text-align: right;">12</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DMU_OT_DSL_DATASET</td>
+<td style="text-align: left;">DSL dataset object used to
+organize snapshot and usage
+static information for
+objects of type
+DMU_OT_OBJSET.</td>
+<td style="text-align: left;">dsl_dataset_phys_t</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DMU_OT_ZNODE</td>
+<td style="text-align: left;">ZPL metadata</td>
+<td style="text-align: left;">znode_phys_t</td>
+<td style="text-align: right;">17</td>
+</tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+<section id="object-sets" class="level2">
+<h2>Object Sets</h2>
+<p>The DMU organizes objects into groups called object sets.
+Object sets are used in ZFS to group related objects,
+such as objects in a filesystem, snapshot, clone, or volume.</p>
+<p>Object sets are represented by a <span class="math inline">1</span>K byte <code>objset_phys_t</code> structure.
+Each member of this structure is defined in detail below.</p>
+<p></p>
+</section>
+</section>
+<section id="sec:dsl" class="level1">
+<h1>Dataset and Snapshot Layer</h1>
+<p>The <em>DSL</em> (<em>Dataset and Snapshot Layer</em>) provides a mechanism
+for describing and managing relationships-between and properties-of object sets.
+Before describing the DSL and the relationships it describes,
+a brief overview of the various flavors of object sets is necessary.</p>
+<section id="object-set-overview" class="level2">
+<h2>Object Set Overview</h2>
+<p>ZFS provides the ability to create four kinds of object sets:
+<em>filesystems</em>, <em>clones</em>, <em>snapshots</em>, and <em>volumes</em>.</p>
+<ul>
+<li>ZFS filesystems:
+A filesystem stores and organizes objects in an easily accessible, POSIX compliant manner.</li>
+<li>ZFS clone:
+A clone is identical to a filesystem with the exception of its origin.
+Clones originate from snapshots and their initial contents are identical to
+that of the snapshot from which it originated.</li>
+<li>ZFS snapshot:
+A snapshot is a read-only version of a filesystem, clone,
+or volume at a particular point in time.</li>
+<li>ZFS volume:
+A volume is a logical volume that is exported by ZFS as a block device.</li>
+</ul>
+<p>ZFS supports several operations and/or configurations
+which cause interdependencies amongst object sets.
+The purpose of the DSL is to manage these relationships.
+The following is a list of such relationships.</p>
+<ul>
+<li>Clones:
+A clone is related to the snapshot from which it originated.
+Once a clone is created,
+the snapshot in which it originated can not be deleted unless the clone is also deleted.</li>
+<li>Snapshots:
+A snapshot is a point-in-time image of the data in the object set in which it was created.
+A filesystem, clone, or volume can not be destroyed unless its snapshots are also destroyed.</li>
+<li>Children:
+ZFS support hierarchically structured object sets;
+object sets within object sets.
+A child is dependent on the existence of its parent.
+A parent can not be destroyed without first destroying all children.</li>
+</ul>
+</section>
+<section id="dsl-infrastructure" class="level2">
+<h2>DSL Infrastructure</h2>
+<p>Each object set is represented in the DSL as a dataset.
+A dataset manages space consumption statistics for an object set,
+contains object set location information,
+and keeps track of any snapshots inter-dependencies.</p>
+<p>Datasets are grouped together hierarchically into collections called Dataset Directories.
+Dataset Directories manage a related grouping of datasets and the properties
+associated with that grouping.
+A DSL directory always has exactly one “active dataset”.
+All other datasets under the DSL directory are related to the “active” dataset
+through snapshots, clones, or child/parent dependencies.</p>
+<p>The following picture shows the DSL infrastructure
+including a pictorial view of
+how object set relationships are described via the DSL datasets and DSL directories.
+The top level DSL Directory can be seen at the top/center of this figure.
+Directly below the DSL Directory is the “active dataset”.
+The active dataset represents the live filesystem.
+Originating from the active dataset is a linked list of snapshots
+which have been taken at different points in time.
+Each dataset structure points to a DMU Object Set
+which is the actual object set containing object data.
+To the left of the top level DSL Directory is a child ZAP object
+containing a listing of all child/parent dependencies.
+To the right of the DSL directory is a properties ZAP object
+containing properties for the datasets within this DSL directory.
+A listing of all properties can be seen in  below.</p>
+<p>A detailed description of Datasets and DSL Directories are described
+in the Dataset Internals
+(section  5.4)
+and DSL Directories Internals.
+(section  5.5)
+sections below.</p>
+<figure>
+<img src="Figures/zfs_dsl_infra.svg" id="fig:zfs_dsl_infra" alt="Figure 9: DSL Infrastructure" /><figcaption aria-hidden="true">Figure 9: DSL Infrastructure</figcaption>
+</figure>
+</section>
+<section id="dsl-implementation-details" class="level2">
+<h2>DSL Implementation Details</h2>
+<p></p>
+</section>
+<section id="sec:ds_internals" class="level2">
+<h2>Dataset Internals</h2>
+<p></p>
+</section>
+<section id="sec:dsl_dir_internals" class="level2">
+<h2>DSL Directory Internals</h2>
+<p></p>
 </section>
 </section>
 <section class="footnotes" role="doc-endnotes">
@@ -649,6 +1613,7 @@ It should be noted that disk labels are a completely separate entity from vdev l
 and while their naming is similar,
 they should not be confused as being similar.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2" role="doc-endnote"><p>The uberblock is similar to the superblock in UFS.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>A dnode is similar to an <em>inode</em> in UFS.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </article>
