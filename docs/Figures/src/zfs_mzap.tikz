@@ -1,0 +1,29 @@
+\begin{tikzpicture}[
+  cell/.style={
+    minimum height=1.5cm, minimum width=.25cm, text width=.25cm, align=center,
+    draw=zap_li_color, text=zap_ru_color, fill=zap_bg_color,
+    font=\sffamily
+  }
+]
+
+  \node (three) [cell] {3};
+  \node (salt) [cell,right=0cm of three] {\rotatebox[origin=c]{90}{salt}};
+  \node (padding) [cell,right=0cm of salt, minimum width=3cm, text width=3cm] {padding};
+  \begin{scope}[local bounding box=mzap_entries]
+    \node (a0) [cell, right=0cm of padding] {};
+    \foreach \i [evaluate=\i as \prev using \i-1] in {1,...,11} {
+      \node (a\i) [cell, right=0cm of a\prev] {};
+    }
+  \end{scope}
+  \node (title) at (mzap_entries.center)
+        [anchor=center, text=zap_ru_color, fill=zap_bg_color, minimum height=1cm]
+        {mzap\_ent\_phys\_t array};
+  \node (head) [above right=0cm and 0cm of three.north west, text=zap_ru_color,
+        inner xsep=0pt, outer xsep=0pt, font=\sffamily]
+        {microzap block};
+  \draw [zap_li_color] (three.south west)  coordinate(a) -- ++(0,-.4cm) coordinate(b);
+  \draw [zap_li_color] (padding.south east) coordinate(c) -- ++(0,-.4cm) coordinate(d);
+  \draw [<->, zap_li_color] ($(a)!2/3!(b)$) --
+    node [fill=white, outer sep=0pt, inner sep=0pt, text=zap_ru_color]
+    {first 128 bytes} ($(c)!2/3!(d)$);
+\end{tikzpicture}

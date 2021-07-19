@@ -1,0 +1,47 @@
+\begin{tikzpicture}[%
+  ptcell/.style = {
+    zap,
+    minimum height=.25cm, minimum width=2cm
+  },
+  pics/.cd,
+  zap_leaf_phys_t/.style={
+    code = {
+      \node (-empty) [zap, minimum height=.75cm, minimum width=2cm] {};
+      \begin{scope}[local bounding box=chunks]
+      \node (-chunk0) [zap, minimum height=.75cm, minimum width=.6cm, text width=0cm,
+        right=0cm of -empty] {};
+      \foreach \i [evaluate=\i as \prev using int(\i-1)] in {1,...,5}{
+        \node (-chunk\i) [zap, text=zap_ru_color,
+          minimum height=.75cm, minimum width=.6cm, text width=0cm,
+          right=0cm of -chunk\prev] {};
+      }
+      \end{scope}
+      \node at (chunks.center) [anchor=center, fill=zap_bg_color, text=zap_li_color, draw=none]
+            {\footnotesize{zap\_leaf\_chunks}};
+      \node [above right=0cm and 0cm of -empty.north west,
+        inner xsep=0pt, outer xsep=0pt, text=zap_li_color]
+            {zap\_leaf\_phys\_t};
+    }
+  }
+]
+  \node (zap_phys_t) [zap, minimum height=.75cm, minimum width=5cm, text width=5cm, align=center]
+        {First Block in ZAP Object};
+  \node [draw=none, fill=none, text=zap_ru_color,%
+    above right=0cm and 0cm of zap_phys_t.north west] {zap\_phys\_t};
+
+  \node (pt0) [ptcell, below right=2cm and 0cm of zap_phys_t.north west] {};
+  \foreach \i [evaluate=\i as \prev using int(\i-1)] in {1,...,11} {
+    \node (pt\i) [ptcell, below=0cm of pt\prev] {};
+  }
+  \node [above right=0cm and 0cm of pt0.north west,
+        inner xsep=0pt, outer xsep=0pt, text=zap_li_color]
+        {Pointer Table};
+
+  \pic [right=1cm of pt0] (leaf0) {zap_leaf_phys_t};
+  \pic [right=.75cm of leaf0-chunk5] (leaf1) {zap_leaf_phys_t};
+  \pic [below=.75cm of leaf0-empty] (leaf2) {zap_leaf_phys_t};
+
+  \draw [->, rounded corners=2pt, zap_li_color] (pt0.east) -- (leaf0-empty.west);
+  \draw [->, rounded corners=2pt, zap_li_color] (leaf0-chunk5.east) -- (leaf1-empty.west);
+  \draw [->, rounded corners=2pt, zap_li_color] (pt1.east) -- ++(.5cm,0) |- (leaf2-empty.west);
+\end{tikzpicture}

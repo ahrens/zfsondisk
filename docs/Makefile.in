@@ -10,7 +10,7 @@ html: $(foreach target, $(MDHTMLTARGETS), $(PUBDIR)/$(target))
 pdf: $(foreach target, $(MDPDFTARGETS),  $(PUBDIR)/$(target))
 .PHONY: all pdf html
 
-$(PUBDIR)/%.md.html: $$($$*_mdparts) $$(LISTINGS) $(HTMLSTYLES) $(FIGURESRC)
+$(PUBDIR)/%.md.html: $$($$*_mdparts) $(HTMLSTYLES) $(FIGURESRC)
 	@if [ -d $(FIGURESDIR) -a -f $(FIGURESDIR)/Makefile ]; 			\
 	 then 									\
 		printf "%-12s %s\n" "Generating" "figures";			\
@@ -36,7 +36,7 @@ $(PUBDIR)/%.md.html: $$($$*_mdparts) $$(LISTINGS) $(HTMLSTYLES) $(FIGURESRC)
 
 TEXTEMPLATE = templates/template.tex
 
-$(PUBDIR)/%.md.pdf: $$($$*_mdparts) $(TEXTEMPLATE)
+$(PUBDIR)/%.md.pdf: $$($$*_mdparts) $(TEXTEMPLATE) $(FIGURESRC)
 	@if [ -d $(FIGURESDIR) -a -f $(FIGURESDIR)/Makefile ]; 			\
 	 then 									\
 		printf "%-12s %s\n" "Generating" "figures";			\

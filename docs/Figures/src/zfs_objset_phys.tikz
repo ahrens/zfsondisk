@@ -1,0 +1,37 @@
+\begin{tikzpicture}[%
+  every node/.style={
+    font=\ttfamily,
+    outer sep=0pt, inner sep=2pt,
+  },
+  field/.style={
+    draw=none, rectangle, fill=objset_bg_color, text=objset_ru_color,
+    minimum width=7cm, text width=7cm, align=left,
+    minimum height=10.5pt
+  }
+]
+  \node (meta_dnode) [field] {dnode\_phys\_t\hspace{3em} os\_metadnode;};
+  \node (zil_header) [field, below=0 of meta_dnode]
+        {zil\_header\_t\hspace{3em} os\_zil\_header;};
+  \node (os_type) [field, below=0 of zil_header]
+        {uint64\_t\hspace{5em} os\_type;};
+  \node (os_flags) [field, below=0 of os_type]
+        {uint64\_t\hspace{5em} os\_flags;};
+  \node (os_portable_mac) [field, below=0 of os_flags]
+        {uint8\_t\hspace{5.5em} os\_portable\_mac[];};
+  \node (os_local_mac) [field, below=0 of os_portable_mac]
+        {uint8\_t\hspace{5.5em} os\_local\_mac[];};
+  \node (os_pad0) [field, below=0 of os_local_mac]
+        {char\hspace{7em} os\_pad0[];};
+  \node (user_used_dnode) [field, below=0 of os_pad0]
+        {dnode\_phys\_t\hspace{3em} os\_userused\_dnode;};
+  \node (group_used_dnode) [field, below=0 of user_used_dnode]
+        {dnode\_phys\_t\hspace{3em} os\_groupused\_dnode;};
+  \node (project_used_dnode) [field, below=0 of group_used_dnode]
+        {dnode\_phys\_t\hspace{3em} os\_projectused\_dnode;};
+  \node (os_pad1) [field, below=0 of project_used_dnode]
+        {char\hspace{7em} os\_pad1[];};
+  \draw [objset_li_color] (meta_dnode.north west) -- (meta_dnode.north east)
+    -- (os_pad1.south east) -- (os_pad1.south west) -- cycle;
+  \node [draw=none, above right=0 of meta_dnode.north west,
+    inner xsep=0pt, outer xsep=0pt, text=objset_ru_color] {objset\_phys\_t};
+\end{tikzpicture}

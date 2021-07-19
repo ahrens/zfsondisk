@@ -1,0 +1,178 @@
+\begin{tikzpicture}[%
+  svdev/.style={
+    vdev, minimum width=1cm, minimum height=1cm,
+  },
+  slabelitem/.style={
+    labelitem, minimum height=1cm
+  },
+  subcell/.style={
+    ubcell, minimum height=1cm, minimum width=.4cm, text width=.4cm
+  },
+  mos/.style = {
+    rectangle, draw, outer sep=0pt, align=center,
+    minimum width = 3cm, text width=3cm, minimum height=.5cm,
+    fill = dnode_bg_color,
+    draw = dnode_li_color,
+    text = dnode_ru_color,
+    font = \sffamily
+  },
+]
+  % Disk
+  \node (l0) [svdev] {L0};
+  \node (l1) [svdev, right=0cm of l0.east] {L1};
+  \node (boot)   [svdev, right=0cm of l1.east, minimum width=2cm] {Boot};
+  \node (dots)   [svdev, right=0cm of boot.east, minimum width=3cm] {....};
+  \node (l2) [svdev, right=0cm of dots.east] {L2};
+  \node (l3) [svdev, right=0cm of l2.east] {L4};
+  % Expanded Label0
+  \node (pad) [slabelitem,below left=.75cm and 1.5cm of l0.south west] {Blank Space};
+  \node (be)  [slabelitem,right=0cm of pad.east] {Boot Header};
+  \node (config)  [slabelitem,right=0cm of be.east, minimum width=5cm, text width=5cm] %
+        {Name/Value Pairs};
+
+  \begin{scope}[local bounding box=ubs]
+  \node (ub0)  [subcell,right=0cm of config.east] {};
+  \foreach \i [evaluate=\i as \prev using \i-1]  in {1,...,8}{
+    \node (ub\i)  [subcell, right=0cm of ub\prev] {};
+  }
+  \end{scope}
+  \node (ubarray) at (ubs.center)
+        [anchor=center, fill=white, minimum height=.72cm, %
+         text=label_ru_color, fill=label_bg_color] {Uberblock Array};
+  % Uberblock struct
+  \node (ub0_struct) [%
+    draw=label_li_color!30,, fill=label_bg_color!30, text=label_ru_color!60,
+    below left =.5cm and -.5cm of ub8.south, %
+    xshift=1cm, minimum width=4cm,
+  ] {%
+    \begin{tabular}{p{2cm}l}
+      uint64\_t   & ub\_magic\\
+      uint64\_t   & ub\_version\\
+      uint64\_t   & ub\_txg\\
+      uint64\_t   & ub\_guid\_sum\\
+      uint64\_t   & ub\_timestamp\\
+      blkptr\_t   & ub\_rootbp
+    \end{tabular}
+  };
+  \node (ub1_struct) [%
+    draw=label_li_color, fill=label_bg_color, text=label_ru_color,
+    below left =.5cm and .5cm of ub0_struct.north east, %
+    minimum width=4cm,
+  ] {%
+    \begin{tabular}{p{2cm}l}
+      uint64\_t   & ub\_magic\\
+      uint64\_t   & ub\_version\\
+      uint64\_t   & ub\_txg\\
+      uint64\_t   & ub\_guid\_sum\\
+      uint64\_t   & ub\_timestamp\\
+      blkptr\_t   & ub\_rootbp
+    \end{tabular}
+  };
+  % OS
+  \node (os) [objset={5}, below left = 0cm and 1cm of ub1_struct.north west] {%
+    \struct{%
+      objset\_phys\_t\lowstrut,
+      os\_meta\_dnode,
+      os\_zil\_header,
+      os\_type = \\\footnotesize{DMU\_OST\_META},
+      ....\highstrut
+    }
+  };
+  \node (meta_dnode) [dnode={7}, below left = 0cm and 1cm of os.north west] {%
+    \struct {%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = DMU\_OT\_DNODE,
+      ....\highstrut,
+      dn\_level = 2\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut,
+    }
+  };
+  % Blkptr
+  \node (blkptr) [blkptr_struct={5}, below left = 0cm and 1cm of meta_dnode.north west] {%
+    \struct {%
+      blkptr\_t\lowstrut,
+      blk\_dva[0],
+      blk\_dva[1],
+      blk\_dva[2],
+      ....\highstrut
+    }
+  };
+  \objects{blkptr0}{%
+    blkptr, draw=none, fill=none, below left=1.75cm and -1.5cm of blkptr.south west}{blk\_ptr}
+  \node (blkptr02) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below left=1.75cm and -2cm of blkptr.south west, inner sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \node (blkptr01) [%
+    blkptr,
+    fit={(blkptr0)},
+    draw, below left=.25cm and .25cm of blkptr02.north east, inner sep=0pt,
+    fill=blkptr_bg_color!50] {};
+  \objects{blkptr0}{%
+    blkptr, below left = .25cm and .25cm of blkptr01.north east}{blk\_ptr}
+  % MOS
+  \begin{scope}[local bounding box=mos_part0, name prefix=mos_part0-]
+    \mositem{empty}  {right=2cm of blkptr0.one east} {};
+    \mositem{objdir} {below=0cm of empty} {\footnotesize{Object Directory}};
+    \mositem{others} {below=0cm of objdir}{....}
+    \mositem{others}  {below=0cm of others}{}
+  \end{scope}
+  \begin{scope}[local bounding box=mos_part1, name prefix=mos_part1-]
+    \mositem{rootds}  {below=.25cm of mos_part0-others} {\footnotesize{Root Dataset}};
+    \mositem{empty} {below=0cm of rootds}{}
+    \mositem{childmap}  {below=0cm of empty}{\footnotesize{Child Map}}
+    \mositem{others}  {below=0cm of childmap}{....}
+  \end{scope}
+  % Obj dir dnode
+  \node (dnode_objdir) [dnode={7}, above right=0cm and 1cm of mos_part1-others.south east,%
+    minimum width=4cm, text width=4cm] {%
+    \struct{%
+      dnode\_phys\_t\lowstrut,
+      dn\_type = \footnotesize{DMU\_OT\_OBJECT\_DIRECTORY},
+      ....\highstrut,
+      dn\_level\lowstrut,
+      dn\_blkptr[]\lowstrut,
+      dn\_bonus[]\lowstrut,
+      dn\_spill\lowstrut
+    }
+  };
+  % Obj Dir ZAP
+  \node (zap_objdir) [zap, below right=0cm and 1.25cm of dnode_objdir.four split east, %
+        text width = 3cm, minimum width=3cm] {%
+    root\_dataset=32\\
+    config=61\\
+    ....
+  };
+  % Connections
+  \draw[label_li_color, densely dashed] (l1.south west) -- (pad.north west);
+  \draw[label_li_color, densely dashed] (l1.south east) -- (ub8.north east);
+  \draw[label_li_color!30, densely dashed] (ub7.south west) -- (ub0_struct.north west);
+  \draw[label_li_color!30, densely dashed] (ub7.south east) -- (ub0_struct.north east);
+  \draw[label_li_color, densely dashed] (ub8.south west) -- (ub1_struct.north west);
+  \draw[label_li_color, densely dashed] (ub8.south east) -- (ub1_struct.north east);
+  \draw[->, thick, objset_li_color, rounded corners=2pt]
+    ($(ub1_struct.south west)+(0,.35cm)$) -- ++(-.5cm,0) |- (os.one east);
+  \draw[dnode_li_color, thick, densely dashed] (os.one split west) -- (meta_dnode.north east);
+  \draw[dnode_li_color, thick, densely dashed] (os.two split west) -- (meta_dnode.south east);
+  \draw[blkptr_li_color, thick, densely dashed]
+    (meta_dnode.four split west) -- (blkptr.north east);
+  \draw[blkptr_li_color, thick, densely dashed]
+    (meta_dnode.five split west) -- (blkptr.south east);
+  \draw[->, thick, rounded corners=2pt, blkptr_li_color] (blkptr.two west) -| (blkptr0.north west);
+  \draw[->, thick, rounded corners=2pt, blkptr_li_color!50] (blkptr.three west) -| (blkptr01.north west);
+  \draw[->, thick, rounded corners=2pt, blkptr_li_color!50] (blkptr.four west) -| (blkptr02.north west);
+  \draw[->, thick, dnode_li_color] (blkptr0.one east) -- (mos_part0-empty.west);
+  \draw[->, thick, dnode_li_color] (blkptr0.two east) -- ++(1cm,0) |- (mos_part1-rootds.west);
+  \draw[dnode_li_color, thick, densely dashed] (mos_part0-objdir.north east) -- (dnode_objdir.north west);
+  \draw[dnode_li_color, thick, densely dashed] (mos_part0-objdir.south east) -- (dnode_objdir.south west);
+  \draw[->, thick, zap_li_color] (dnode_objdir.five east) coordinate(tmp) -- (tmp -| zap_objdir.west);
+
+  \node [draw=none, text=dnode_ru_color, right=0cm of mos_part0-empty.east] {\small{0}};
+  \node [draw=none, text=dnode_ru_color, right=0cm of mos_part0-objdir.east] {\small{1}};
+  \node [draw=none, text=dnode_ru_color, right=-2pt of mos_part1-rootds.east] {\small{32}};
+  \node [draw=none, text=dnode_ru_color, right=-2pt of mos_part1-empty.east] {\small{33}};
+  \node [text=dnode_ru_color, above=0cm of mos_part0] {\large{\bfseries{MOS}}};
+\end{tikzpicture}

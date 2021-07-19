@@ -1,0 +1,40 @@
+\chapter*{Introduction}\addcontentsline{toc}{chapter}{Introduction}
+
+ZFS is a new filesystem technology
+that provides immense capacity (128-bit),
+provable data integrity,
+always-consistent on-disk format,
+self-optimizing performance,
+and real-time remote replication.
+
+ZFS departs from traditional filesystems by eliminating the concept of volumes.
+Instead,
+ZFS filesystems share a common storage pool
+consisting of writeable storage media.
+Media can be added or removed from the pool
+as filesystem capacity requirements change.
+Filesystems dynamically grow and shrink as needed
+without the need to re-partition underlying storage.
+
+ZFS provides a truly consistent on-disk format,
+but using a \emph{copy on write} (\emph{COW}) transaction model.
+This model ensures that on disk data is never overwritten
+and all on disk updates are done atomically.
+
+The ZFS software is comprised of seven distinct pieces:
+the \emph{SPA} (Storage Pool Allocator),
+the \emph{DSL} (Dataset and Snapshot Layer),
+the \emph{DMU} (Data Management Layer),
+the \emph{ZAP} (ZFS Attribute Processor),
+the \emph{ZPL} (ZFS Posix Layer),
+the \emph{ZIL} (ZFS Intent Log),
+and \emph{ZVOL} (ZFS Volume).
+The on-disk structures associated with each of these pieces are explained in the following chapters:
+SPA ({Chapters \ref{chap:vdev} and \ref{chap:blkptr}}),
+DSL (Chapter \ref{chap:dsl}),
+DMU (Chapter \ref{chap:dmu}),
+ZAP (Chapter \ref{chap:zap}),
+ZPL (Chapter \ref{chap:zpl}),
+ZIL (Chapter \ref{chap:zil}),
+ZVOL (Chapter \ref{chap:zvol}).
+

@@ -1,0 +1,31 @@
+\chapter{ZFS Volume}\label{chap:zvol}
+
+\emph{ZFS Volumes}, or \emph{ZVOL} provides a mechanism for creating logical volumes.
+ZFS volumes are exported as block devices
+and can be used like any other block device.
+ZVOLs are represented in ZFS as an object set of type \lstinline{DMU_OST_ZVOL}
+(see Table~\ref{tbl:zvol_obj_types}).
+A ZVOL object set has a very simple format consisting of two objects:
+a properties object and a data object,
+object type \lstinline{DMU_OT_ZVOL_PROP}
+and \lstinline{DMU_OT_ZVOL} respectively.
+Both objects have statically assigned object Ids.
+Each object is described below.
+
+\begin{LongTable4Columns}{Object}{Type}{Number}{Description}
+  {ZVOL Object Types}{zvol_obj_types}
+  {llcp{7cm}}
+  {
+    Properties
+    & \small{\lstinline{DMU_OT_ZVOL_PROP}}
+    & 2
+    & The ZVOL property object is a ZAP object
+    containing attributes associated with this volume.
+    A particular attribute of interest is the ``volsize'' attribute.
+    This attribute contains the size, in bytes, of the volume.\\
+    Data
+    & \small{\lstinline{DMU_OT_ZVOL}}
+    & 1
+    & This object stores the contents of this virtual block device.
+  }
+\end{LongTable4Columns}

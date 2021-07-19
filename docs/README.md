@@ -1,6 +1,13 @@
-This directory contains all files needed
-to build the documents.
-To generate the final documentations on Linux,
+This directory contains all files needed to generate
+`zfs_internals.md.pdf`, `zfs_internals.md.html`, and `zfs_ondisk_spec.pdf`.
+
+To generate `zfs_ondisk_spec.pdf`,
+
+```bash
+for i in {1..3}; xelatex zfs_ondisk_spec.tex; done
+```
+
+To build the other documents (on Linux)
 you will have to install [Pandoc](https://pandoc.org/)
 and some filters,
 [TeX Live](https://tug.org/texlive/) and some packages.
@@ -19,8 +26,8 @@ $ cabal install cabal-install \
 && /usr/local/bin/cabal v2-install pandoc pandoc-citeproc pandoc-crossref
 ```
 
-After installation, 
-you can remove haskell plat-form to release about 6~7GB disk space.
+After installation,
+you can remove haskell platform to release about 6~7GB disk space.
 
 ```bash
 $ sudo dnf autoremove -y haskell-platform
@@ -34,11 +41,11 @@ to install Pandoc and the needed filters.
 $ stack install pandoc pandoc-citeproc pandoc-crossref
 ```
 
-It will likely fail, 
+It will likely fail,
 but the solution is in the error message.
 
-Install [Go](https://golang.org), 
-clone pandoc-filter from 
+Install [Go](https://golang.org),
+clone pandoc-filter from
 https://github.com/vupiggy/pandoc-filter.git,
 then
 
@@ -50,7 +57,7 @@ $ go build -o image-filter main.go
 ```
 
 # Tex Live
-To install Tex Live, 
+To install Tex Live,
 you can use `apt`, `dnf`,
 or the install script from CTAN.
 
@@ -61,7 +68,7 @@ $ wget -c http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
 && ./install-tl/install-tl --profile=./texlive.profile
 ```
 
-The content of `texlive.profile`: 
+The content of `texlive.profile`:
 
 ```
 selected_scheme scheme-small

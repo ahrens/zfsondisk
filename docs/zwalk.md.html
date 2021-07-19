@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="author" content="Luke Huang &lt;bwonder475@tutanota.com&gt;">
+  <title>ZFS On-disk Format</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="styles/pandoc.css">
+  <link rel="stylesheet" href="styles/tufte-extra.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+   var mathElements = document.getElementsByClassName("math");
+   var macros = [];
+   for (var i = 0; i < mathElements.length; i++) {
+    var texText = mathElements[i].firstChild;
+    if (mathElements[i].tagName == "SPAN") {
+     katex.render(texText.data, mathElements[i], {
+      displayMode: mathElements[i].classList.contains('display'),
+      throwOnError: false,
+      macros: macros,
+      fleqn: false
+     });
+  }}});
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
+<style type="text/css">
+  /* CSS counter */
+  html {
+      counter-reset: ;
+  }
+  /* style of "before" */
+  /** before plain or definition **/
+  .proof:before
+  {
+      font-weight:700;
+      font-style:normal
+  }
+  /** before remark or proof **/
+  .proof:before
+  {
+      font-style:italic
+  }
+  /* content of "before" (everything goes here) */
+              .proof:before
+  {
+      content:"证明：";
+      font-family: "Kaiti SC";
+      font-weight: bold;
+      font-style: normal;
+      text-decoration: underline;
+  }
+  /* QED */
+  .proof:after
+  {
+      /* content: "\25FB"; */
+      content: "【证毕】";
+      float:right;
+      font-family: "Kaiti SC";
+      font-weight: bold;
+      font-style: normal;
+  }
+  /* main style */
+  /** plain **/
+  ,.proof
+  {
+      display: block;
+      margin:  12px 0;
+      font-style:italic
+  }
+  /** definition, remark or proof **/
+  ,.proof
+  {
+      display: block;
+      margin:  12px 0;
+      font-style:normal;
+  }
+</style>
+
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+
+</head>
+<body>
+<article>
+<header>
+<h1 class="title">ZFS On-disk Format</h1>
+<!--
+<p class="byline">Mon Jul 19 08:07:06 AM EDT 2021 &ndash; Luke Huang &lt;bwonder475@tutanota.com&gt;</p>
+-->
+<p class="byline">Luke Huang &lt;bwonder475@tutanota.com&gt;</p>
+<p class="byline">Mon Jul 19 08:07:06 AM EDT 2021</p>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#on-disk-format">On-disk Format</a>
+<ul>
+<li><a href="#vdev">Vdev</a></li>
+<li><a href="#label-and-uberblock">Label and Uberblock</a></li>
+<li><a href="#block-pointer">Block Pointer</a></li>
+<li><a href="#dmu">DMU</a></li>
+<li><a href="#dsl">DSL</a></li>
+<li><a href="#mos">MOS</a></li>
+<li><a href="#zap">ZAP</a></li>
+</ul></li>
+<li><a href="#on-disk-data-walk-or-wheres-my-data">On-Disk Data Walk (Or: Where’s My Data)</a>
+<ul>
+<li><a href="#environment">Environment</a></li>
+<li><a href="#preparation">Preparation</a></li>
+<li><a href="#walk-the-data.">Walk the data.</a></li>
+</ul></li>
+<li><a href="#recovering-removed-file">Recovering removed file</a></li>
+</ul>
+</nav>
+<p><p><a href="zfs_internals.md.pdf">Click here</a> for a printer friendly PDF version.</p></p>
+<section id="on-disk-format" class="level1">
+<h1>On-disk Format</h1>
+<section id="vdev" class="level2">
+<h2>Vdev</h2>
+<p>ZFS storage pools are essentially a collection of <em>virtual devices</em>, or <em>vdevs</em>,
+which are arranged in a tree
+with physical vdevs sitting at leaves.
+Figure. 1 illustrates such a tree representing
+a sample pool configuration containing two mirrors,
+each of which has two disks.</p>
+<figure>
+<img src="Figures/zfs_vdev.svg" id="fig:vdev" alt="Figure 1: Vdev Tree" /><figcaption aria-hidden="true">Figure 1: Vdev Tree</figcaption>
+</figure>
+</section>
+<section id="label-and-uberblock" class="level2">
+<h2>Label and Uberblock</h2>
+<p>Each physical vdev within a storage pool contains four identical copies of 256KB structure
+called a vdev <em>label</em> (<code>vdev_label_t</code>).
+The vdev label
+contains information describing this physical vdev
+and all other vdevs which share a common top-level vdev as an ancestor.
+For example,
+in Figure. 1,
+the vdev label on D3
+would contain information describing D3, D4, and M2.
+Any copy of the labels can be used to access and verify the pool.
+There are two labels at the front of the device
+and two labels at the back.
+Figure. 2 illustrates the physical layout of vdev labels.</p>
+<figure>
+<img src="Figures/zfs_label.svg" id="fig:label" alt="Figure 2: From label to MOS" /><figcaption aria-hidden="true">Figure 2: From label to MOS</figcaption>
+</figure>
+<p>An <em>uberblock</em> (<code>uberblock_t</code>) contains information
+necessary to access the contents of the pool.
+Only one uberblock in the pool is <em>active</em> at any time.
+The uberblock with the highest transaction group number
+and valid checksum is the active uberblock.
+Figure. 3 illustrates the layout of an active uberblock,
+and how accessing the storage pool can start from it.</p>
+<figure>
+<img src="Figures/zfs_ub.svg" id="fig:ub" alt="Figure 3: From Uberblock to MOS" /><figcaption aria-hidden="true">Figure 3: From Uberblock to MOS</figcaption>
+</figure>
+</section>
+<section id="block-pointer" class="level2">
+<h2>Block Pointer</h2>
+<p>Data is transferred between disk and main memory in units called blocks.
+A block pointer (<code>blkptr_t</code>) is a 128 byte ZFS structure
+used to physically locate, verify, and describe blocks of data on disk.
+The layout of a normal blkptr is shown as Figure. 4.
+Note that,
+the size of a block is described by three different fields:
+<em>psize</em>, <em>lsize</em>, and <em>asize</em>.</p>
+<figure>
+<img src="Figures/zfs_blkptr.svg" id="fig:blkptr" alt="Figure 4: Block Pointer Layout" /><figcaption aria-hidden="true">Figure 4: Block Pointer Layout</figcaption>
+</figure>
+<ul>
+<li><em>lsize</em>: Logical size.
+The size of the data without compression, raidz or gang overhead.</li>
+<li><em>psize</em>: Physical size of the block on disk after compression</li>
+<li><em>asize</em>: Allocated size,
+total size of all blocks allocated to hold this data
+including any gang headers or raid-Z parity information</li>
+</ul>
+<p>Normally,
+block pointers point (via their DVAs) to a block which holds data.
+If the data that we need to store is very small,
+this is an inefficient use of space,
+Additionally, reading these small blocks tends to generate
+more random reads.
+Embedded-data Block Pointers was introduced.
+It allows small pieces of data
+(the “payload”, upto 112 bytes) embedded in the block pointer,
+the block pointer doesn’t point to anything then.
+The layout of an embedded block pointer is as Figure. 5.</p>
+<figure>
+<img src="Figures/zfs_embedded_blkptr.svg" id="fig:embedded" alt="Figure 5: Embedded Block Pointer Layout" /><figcaption aria-hidden="true">Figure 5: Embedded Block Pointer Layout</figcaption>
+</figure>
+</section>
+<section id="dmu" class="level2">
+<h2>DMU</h2>
+<p>The <em>Data Management Unit</em>,
+or <em>DMU</em> groups blocks into logical units
+called <em>objects</em>.
+Almost everything in ZFS is an object.
+Objects are defined by 512 bytes structures called <em>dnodes</em> (<code>dnode_phys_t</code>).
+A dnode describes and organizes a collection of blocks making up an object,
+for example,
+<code>dn_type</code> determines the type of the object,
+<code>dn_blkptr</code> stores the block pointers for block addressing.
+A dnode has a limited number (<code>dn_nblkptr</code>) of block pointers to describe an object’s data.
+For a dnode using the largest data block size (128KB)
+and containing the maximum number of block pointers (3),
+the largest object size it can represent is 384 KB.
+To allow larger objects,
+indirect blocks are introduced,
+the largest indirect block (128KB) can hold up to 1024 block pointers,
+so that 384MB object can be represented without the next level of indirection.
+The <code>dn_nlevel</code> field tells total levels of addressing.
+Figure. 6 illustrates a 3-levels indirect addressing.</p>
+<figure>
+<img src="Figures/zfs_indirect.svg" id="fig:indirect" alt="Figure 6: Indirect block addressing" /><figcaption aria-hidden="true">Figure 6: Indirect block addressing</figcaption>
+</figure>
+<p>Related objects can be further grouped by the DMU into <em>object sets</em>.
+ZFS allows users to create four kinds of object sets:
+<em>filesystems</em>, <em>clones</em>, <em>snapshots</em>, and <em>volumes</em>.</p>
+</section>
+<section id="dsl" class="level2">
+<h2>DSL</h2>
+<p>The <em>Dataset and Snapshot Layer</em>, or <em>DSL</em>
+is for describing
+and managing relationships-between and properties-of object sets.</p>
+<p>Each object set is represented in the DSL as a <em>dataset</em> (<code>dsl_dataset_phys_t</code>).
+Datasets are grouped into collections called <em>Dataset Dircectories</em>,
+which manages a related grouping of datasets
+and the properties associated with that grouping.
+A DSL directory always has exactly one <em>active</em> dataset.
+All other datasets under the directory are related to the active dataset
+through <em>snapshots</em>, <em>clones</em>, or <em>child/parent dependencies</em>.</p>
+</section>
+<section id="mos" class="level2">
+<h2>MOS</h2>
+<p>The DSL is implementd as an object set of type <code>DMU_OST_META</code>,
+which is often called the <em>Meta Object Set</em>, or <em>MOS</em>.
+There is a single distinguished object in the Meta Object Set,
+called the <em>object directory</em>.
+Object directory is always located in the <span class="math inline">1^{st}</span> element of the dnode array
+(index starts from <span class="math inline">0</span>).
+All other objects can be located by traversing
+through a set of object references starting at this object.</p>
+<p>The object directory is implemented as a <em>ZAP</em> object
+that is made up of name/value pairs.
+The object directory contains
+<em>root_dataset</em>, <em>config</em>, <em>free_bpobj</em>,
+and some other attribute pairs.</p>
+<p>Figure. 7 illustrates a realistic layout of the MOS of a sample pool,
+from which a data set (e.g., file system) can be accessed.</p>
+<figure>
+<img src="Figures/zfs_mos.svg" id="fig:mos" alt="Figure 7: MOS" /><figcaption aria-hidden="true">Figure 7: MOS</figcaption>
+</figure>
+<p>Figure. 8 illustrates the path from a data set object to
+user data (contents of the sample file <code>/sbin/zdump</code>).</p>
+<figure>
+<img src="Figures/zfs_fs.svg" id="fig:fs" alt="Figure 8: From the data set to user data" /><figcaption aria-hidden="true">Figure 8: From the data set to user data</figcaption>
+</figure>
+</section>
+<section id="zap" class="level2">
+<h2>ZAP</h2>
+<p>The <em>ZFS Attributes Processors</em>, or <em>ZAPs</em> are objects
+used to store attributes in the form of name-value pairs.
+ZAPs come in two forms:
+<em>micro ZAP</em> for small number of attributes
+and <em>fat ZAP</em> for large number of attributes.
+Both of them are arranged
+based on hash of the attribute’s name.
+Directories in ZFS are implemented as ZAP objects.</p>
+</section>
+</section>
+<section id="on-disk-data-walk-or-wheres-my-data" class="level1">
+<h1>On-Disk Data Walk (Or: Where’s My Data)</h1>
+<p>This part (title and content) was inspired by
+Max Bruning’s great demostration –
+<a href="http://www.osdevcon.org/2008/files/osdevcon2008-max.pdf">ZFS On-Disk Data Walk (Or: Where’s My Data)</a>
+, and even better,
+his
+<a href="https://www.yumpu.com/en/document/view/3947186/zfs-on-disk-data-walk-or-wheres-my-data-bruning-systems">training material</a>.
+He used the modified<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> <code>mdb</code>, <code>zdb</code>,
+and <code>dd</code> to read and dump ZFS data structure from physical devices
+to illustrate the ZFS on-disk layout,
+from vdev label to content of a file.</p>
+<p>There is not <code>mdb</code> equivalent on Linux,
+and I don’t want to switch among tools from time to time,
+so that I wrote a simple tool to do all the things,
+reading (via <code>open</code> and <code>read</code> system calls),
+decompressing (by calling <em>liblz4</em> functions) data from the physical vdev,
+and dumping the ZFS physical data structures as JSON format.
+It doesn’t call any function of the ZFS libraries.
+A few helpers are still used
+because I was too lazy to write my own,
+perhaps I will remove all of them in the future.
+However the core functions
+such as <code>spa_xxxx</code>, <code>dmu_xxxx</code>, <code>dsl_xxxx</code>, <code>zio_xxxx</code>, are avoided.</p>
+<section id="environment" class="level2">
+<h2>Environment</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a>$ <span class="fu">cat</span> /etc/os-release</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="va">NAME=</span><span class="st">&quot;Ubuntu&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="va">VERSION=</span><span class="st">&quot;20.04.2 LTS (Focal Fossa)&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="ex">....</span> output omitted ....</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>$ <span class="fu">sudo</span> apt install libzpool2linux libzfs2linux libzfslinux-dev</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>$ <span class="fu">sudo</span> apt install libnvpair1linux libjson-c-dev liblz4-dev</span></code></pre></div>
+</section>
+<section id="preparation" class="level2">
+<h2>Preparation</h2>
+<ol>
+<li><p>Clone and build <code>zdump</code> tool.</p></li>
+<li><p>Create a new file system, with a very simple hierarchy.
+Note that,
+as the <code>zdump</code> tool only supports lz4,
+the default compression algorithm of ZFS on Linux,
+don’t set the <code>compression</code> property for creating ZFS.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>$ <span class="fu">sudo</span> zfs create -V 4G dpool/zvol0</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>$ <span class="fu">sudo</span> fdisk -l /dev/zd0 <span class="kw">|</span> <span class="fu">head</span> -1</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="ex">Disk</span> /dev/zd0: 4 GiB, 4294967296 bytes, 8388608 sectors</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>$ <span class="fu">sudo</span> dmsetup create zdisk0 --table <span class="st">&#39;0 8388607 linear /dev/zd0 0&#39;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>$ <span class="fu">sudo</span> mkdir /mnt/zwalk</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>$ <span class="fu">sudo</span> zpool create -f -m /mnt/zwalk zwalk /dev/mapper/zdisk0</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>$ <span class="fu">sudo</span> zfs list</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a><span class="ex">NAME</span>         USED  AVAIL     REFER  MOUNTPOINT</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a><span class="ex">zwalk</span>        840K  3.62G      192K  /mnt/zwalk</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>$ <span class="fu">sudo</span> mkdir /mnt/zwalk/<span class="dt">{sbin,var,usr}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a>$ <span class="fu">sudo</span> su -c <span class="st">&#39;printf &quot;#!/bin/bash\n\necho Hello ZFS\n&quot; &gt;/mnt/zwalk/sbin/zdump&#39;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a>$ <span class="fu">cat</span> /mnt/zwalk/sbin/zdump</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a><span class="bu">echo</span> Hello ZFS</span></code></pre></div>
+<p>To clean up after the walk:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>$ <span class="fu">sudo</span> zpool destroy zwalk</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>$ <span class="fu">sudo</span> dmsetup remove zdisk0</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>$ <span class="fu">sudo</span> zfs destroy dpool/zvol0</span></code></pre></div></li>
+<li><p>Add the user into <code>disk</code> group
+so that <code>sudo</code> is not needed to read the block device file.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>$ <span class="fu">sudo</span> usermod -aG disk <span class="va">$(</span><span class="fu">whoami</span><span class="va">)</span></span></code></pre></div></li>
+</ol>
+</section>
+<section id="walk-the-data." class="level2">
+<h2>Walk the data.</h2>
+<ol>
+<li><p>The first step is dumping the label and active uberblock.
+Note that the <code>offset</code>, <code>psize</code>, and <code>lsize</code> are hexadecimal.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --label /dev/mapper/zdisk0:0:40000/40000</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>  <span class="st">&quot;Vdev Label&quot;</span>:<span class="kw">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>    <span class="st">&quot;name&quot;</span>:<span class="st">&quot;zwalk&quot;</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>    <span class="st">&quot;version&quot;</span>:<span class="ex">5000</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>    <span class="st">&quot;uberblock&quot;</span>:<span class="kw">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>      <span class="st">&quot;magic&quot;</span>:<span class="st">&quot;0x0000000000bab10&quot;</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>      <span class="st">&quot;version&quot;</span>:<span class="ex">5000</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>      <span class="st">&quot;txg&quot;</span>:<span class="ex">10</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>      <span class="st">&quot;rootbp&quot;</span>:<span class="kw">{</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;3801e000&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;1000&quot;</span>,</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;1000&quot;</span>,</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;uncompressed&quot;</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a>      <span class="kw">}</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump dnode of the MOS,
+using the <code>offset</code> (<span class="math inline">3801e000</span>),
+<code>psize</code> (<span class="math inline">1000</span>), and <code>lsize</code> (<span class="math inline">1000</span>) we got from the previous step.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --mos /dev/mapper/zdisk0:<span class="st">&quot;3801e000&quot;</span>:1000/1000</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>  <span class="st">&quot;MOS&quot;</span>:<span class="kw">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>    <span class="st">&quot;os_type&quot;</span>:<span class="st">&quot;META&quot;</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>    <span class="st">&quot;dnonde&quot;</span>:<span class="kw">{</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>      <span class="st">&quot;dn_type&quot;</span>:<span class="st">&quot;DMU dnode&quot;</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>      <span class="st">&quot;dn_bonustype&quot;</span>:<span class="ex">0</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>      <span class="st">&quot;dn_indblkshift&quot;</span>:<span class="ex">17</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a>      <span class="st">&quot;dn_nlevels&quot;</span>:<span class="ex">2</span>,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a>      <span class="st">&quot;dn_nblkptr&quot;</span>:<span class="ex">3</span>,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>      <span class="st">&quot;dn_blkptr&quot;</span>:[</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a>        <span class="kw">{</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a>          <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true"></a>          <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;4e000&quot;</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true"></a>          <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true"></a>          <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true"></a>          <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true"></a>          <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true"></a>        <span class="kw">}</span>,</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true"></a>        <span class="ex">....</span> output omitted ....</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true"></a>      ]</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>From output of the previous step,
+we notice that the MOS uses <span class="math inline">2</span>-levels indirect addressing (<code>dn_nlevels</code> was <span class="math inline">2</span><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>),
+so we need to find the <span class="math inline">0^{th}</span> level block pointer to access to the data block.
+The <code>lsize</code> of each block pointer is <span class="math inline">16</span>K,
+that can contain <span class="math inline">32</span> dnodes.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --indirect-blkptr /dev/mapper/zdisk0:<span class="st">&quot;4e000&quot;</span>:20000/2000:2</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>  <span class="st">&quot;[L0]&quot;</span>:[</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;28008000&quot;</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;2802c000&quot;</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;28006000&quot;</span>,</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true"></a>  ]</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump the MOS object directory,
+which is the <span class="math inline">1^{st}</span> object (the <span class="math inline">0^{th}</span> is not used) in the dnode array.
+The MOS is a fat ZAP object,
+whose entries will be dumped as well as its dnode.
+We will use the <code>root_dataset</code> object to move forward.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --mos-objdir /dev/mapper/zdisk0:<span class="st">&quot;28008000&quot;</span>:4000/2000</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>  <span class="st">&quot;dnode&quot;</span>:<span class="kw">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>    <span class="st">&quot;dn_type&quot;</span>:<span class="st">&quot;object directory&quot;</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>    <span class="st">&quot;dn_bonustype&quot;</span>:<span class="ex">0</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>    <span class="st">&quot;dn_indblkshift&quot;</span>:<span class="ex">17</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>    <span class="st">&quot;dn_nlevels&quot;</span>:<span class="ex">1</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>    <span class="st">&quot;dn_nblkptr&quot;</span>:<span class="ex">3</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>    <span class="st">&quot;dn_blkptr&quot;</span>:[</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;10000&quot;</span>,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;12000&quot;</span>,</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true"></a>      <span class="kw">}</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true"></a>    ]</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true"></a>  <span class="kw">}</span>,</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true"></a>  <span class="st">&quot;FZAP&quot;</span>:<span class="kw">{</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true"></a>    <span class="st">&quot;zap_block_type&quot;</span>:<span class="st">&quot;ZBT_HEADER&quot;</span>,</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true"></a>    <span class="st">&quot;zap_magic&quot;</span>:<span class="st">&quot;0x00000002f52ab2a&quot;</span>,</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true"></a>    <span class="st">&quot;zap_num_entries&quot;</span>:<span class="ex">13</span>,</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true"></a>    <span class="st">&quot;zap_table_phys&quot;</span>:<span class="kw">{</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true"></a>      <span class="st">&quot;zt_blk&quot;</span>:<span class="ex">0</span></span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true"></a>  <span class="kw">}</span>,</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true"></a>  <span class="st">&quot;FZAP leaf&quot;</span>:<span class="kw">{</span></span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true"></a>    <span class="st">&quot;entries&quot;</span>:[</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true"></a>        <span class="st">&quot;name&quot;</span>:<span class="st">&quot;root_dataset&quot;</span>,</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true"></a>        <span class="st">&quot;value&quot;</span>:<span class="ex">32</span></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true"></a>      <span class="ex">....</span> output omitted ....</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true"></a>        <span class="st">&quot;name&quot;</span>:<span class="st">&quot;config&quot;</span>,</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true"></a>        <span class="st">&quot;value&quot;</span>:<span class="ex">61</span></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true"></a>      <span class="ex">....</span> output omitted ....</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true"></a>    ]</span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump the root data set.
+From the previous step,
+we knew that it’s the <span class="math inline">32^{nd}</span> item in the dnode array,
+therefore,
+we seek it in the <span class="math inline">1^{st}</span> block (with the offset <span class="math inline">2802c000</span>).
+<code>dsl_dir_phys_t</code> is stored
+in the <code>dn_bonus</code> field of dnode of the root data set object.
+We can see that the head data set object is the <span class="math inline">54^{th}</span> object,
+located in the same block as the root data set’s.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --mos-rootds /dev/mapper/zdisk0:<span class="st">&quot;2802c000&quot;</span>:4000/2000:32</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>  <span class="st">&quot;dnode&quot;</span>:<span class="kw">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>    <span class="st">&quot;dn_type&quot;</span>:<span class="st">&quot;DSL directory&quot;</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>    <span class="st">&quot;dn_bonustype&quot;</span>:<span class="ex">12</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>    <span class="st">&quot;dn_indblkshift&quot;</span>:<span class="ex">17</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>    <span class="st">&quot;dn_nlevels&quot;</span>:<span class="ex">1</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a>    <span class="st">&quot;dn_nblkptr&quot;</span>:<span class="ex">1</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>    <span class="st">&quot;dn_blkptr&quot;</span>:[</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a>      <span class="kw">}</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true"></a>    ]</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true"></a>  <span class="kw">}</span>,</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true"></a>  <span class="st">&quot;DSL&quot;</span>:<span class="kw">{</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true"></a>    <span class="st">&quot;dd_creation_time&quot;</span>:<span class="st">&quot;....&quot;</span>,</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true"></a>    <span class="st">&quot;dd_child_dir_zapobj&quot;</span>:<span class="ex">34</span>,</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true"></a>    <span class="st">&quot;dd_head_dataset_obj&quot;</span>:<span class="ex">54</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump the childmap and head data set.
+The later will be used to move forward to ZPL.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --mos-childmap /dev/mapper/zdisk0:<span class="st">&quot;2802c000&quot;</span>:4000/2000:34</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>  <span class="st">&quot;Embedded Block Pointer&quot;</span>:<span class="kw">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>    <span class="st">&quot;type&quot;</span>:<span class="ex">0</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>    <span class="st">&quot;psize&quot;</span>:<span class="ex">78</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>    <span class="st">&quot;lsize&quot;</span>:<span class="ex">512</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a>    <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a>    <span class="st">&quot;Micro ZAP&quot;</span>:[</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a>        <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;</span><span class="va">$MOS</span><span class="st">&quot;</span>,</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a>        <span class="st">&quot;mze_value&quot;</span>:<span class="ex">35</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true"></a>        <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;</span><span class="va">$FREE</span><span class="st">&quot;</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true"></a>        <span class="st">&quot;mze_value&quot;</span>:<span class="ex">38</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true"></a>        <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;</span><span class="va">$ORIGIN</span><span class="st">&quot;</span>,</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true"></a>        <span class="st">&quot;mze_value&quot;</span>:<span class="ex">42</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true"></a>      <span class="kw">}</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true"></a>    ]</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true"></a><span class="kw">}</span></span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true"></a>$ <span class="ex">zdump</span> --mos-headds /dev/mapper/zdisk0:<span class="st">&quot;2802c000&quot;</span>:4000/2000:54</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true"></a>  <span class="st">&quot;Head data set&quot;</span>:<span class="kw">{</span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true"></a>    <span class="st">&quot;ds_dir_obj&quot;</span>:<span class="ex">32</span>,</span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true"></a>    <span class="st">&quot;ds_creation_time&quot;</span>:<span class="st">&quot;Tue May 18 08:51:28&quot;</span>,</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true"></a>    <span class="st">&quot;ds_create_txg&quot;</span>:<span class="ex">1</span>,</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true"></a>    <span class="st">&quot;ds_bp&quot;</span>:<span class="kw">{</span></span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;8028000&quot;</span>,</span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;1000&quot;</span>,</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;1000&quot;</span>,</span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;uncompressed&quot;</span></span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true"></a>  <span class="kw">}</span>,</span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true"></a>  <span class="st">&quot;Object Set&quot;</span>:<span class="kw">{</span></span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true"></a>    <span class="st">&quot;os_type&quot;</span>:<span class="st">&quot;ZPL&quot;</span>,</span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true"></a>    <span class="st">&quot;dnonde&quot;</span>:<span class="kw">{</span></span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true"></a>      <span class="st">&quot;dn_type&quot;</span>:<span class="st">&quot;DMU dnode&quot;</span>,</span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true"></a>      <span class="st">&quot;dn_bonustype&quot;</span>:<span class="ex">0</span>,</span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true"></a>      <span class="st">&quot;dn_indblkshift&quot;</span>:<span class="ex">17</span>,</span>
+<span id="cb10-45"><a href="#cb10-45" aria-hidden="true"></a>      <span class="st">&quot;dn_nlevels&quot;</span>:<span class="ex">6</span>,</span>
+<span id="cb10-46"><a href="#cb10-46" aria-hidden="true"></a>      <span class="st">&quot;dn_nblkptr&quot;</span>:<span class="ex">3</span>,</span>
+<span id="cb10-47"><a href="#cb10-47" aria-hidden="true"></a>      <span class="st">&quot;dn_blkptr&quot;</span>:[</span>
+<span id="cb10-48"><a href="#cb10-48" aria-hidden="true"></a>        <span class="kw">{</span></span>
+<span id="cb10-49"><a href="#cb10-49" aria-hidden="true"></a>          <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb10-50"><a href="#cb10-50" aria-hidden="true"></a>          <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;8024000&quot;</span>,</span>
+<span id="cb10-51"><a href="#cb10-51" aria-hidden="true"></a>          <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb10-52"><a href="#cb10-52" aria-hidden="true"></a>          <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb10-53"><a href="#cb10-53" aria-hidden="true"></a>          <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb10-54"><a href="#cb10-54" aria-hidden="true"></a>          <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb10-55"><a href="#cb10-55" aria-hidden="true"></a>        <span class="kw">}</span>,</span>
+<span id="cb10-56"><a href="#cb10-56" aria-hidden="true"></a>        <span class="ex">....</span> output omitted ....</span>
+<span id="cb10-57"><a href="#cb10-57" aria-hidden="true"></a>      ]</span>
+<span id="cb10-58"><a href="#cb10-58" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb10-59"><a href="#cb10-59" aria-hidden="true"></a>  <span class="kw">}</span></span>
+<span id="cb10-60"><a href="#cb10-60" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Note that 6-levels indirect block pointer is used,
+we need to walk down to the L0 block pointer first.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --indirect-blkptr /dev/mapper/zdisk0:<span class="st">&quot;8024000&quot;</span>:20000/2000:6</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>  <span class="st">&quot;[L4]&quot;</span>:[</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;3801c000&quot;</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>  ],</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a>  <span class="st">&quot;[L3]&quot;</span>:[</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;2802a000&quot;</span>,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a>  ],</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true"></a>  <span class="st">&quot;[L2]&quot;</span>:[</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;8022000&quot;</span>,</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true"></a>  ],</span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true"></a>  <span class="st">&quot;[L1]&quot;</span>:[</span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-38"><a href="#cb11-38" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-39"><a href="#cb11-39" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;4c000&quot;</span>,</span>
+<span id="cb11-40"><a href="#cb11-40" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-41"><a href="#cb11-41" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;20000&quot;</span>,</span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true"></a>  ],</span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true"></a>  <span class="st">&quot;[L0]&quot;</span>:[</span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-50"><a href="#cb11-50" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;46000&quot;</span>,</span>
+<span id="cb11-51"><a href="#cb11-51" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-52"><a href="#cb11-52" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-53"><a href="#cb11-53" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb11-54"><a href="#cb11-54" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-55"><a href="#cb11-55" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-56"><a href="#cb11-56" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-57"><a href="#cb11-57" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-58"><a href="#cb11-58" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;4a000&quot;</span>,</span>
+<span id="cb11-59"><a href="#cb11-59" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-60"><a href="#cb11-60" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-61"><a href="#cb11-61" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb11-62"><a href="#cb11-62" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-63"><a href="#cb11-63" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-64"><a href="#cb11-64" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-65"><a href="#cb11-65" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-66"><a href="#cb11-66" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-67"><a href="#cb11-67" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-68"><a href="#cb11-68" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb11-69"><a href="#cb11-69" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb11-70"><a href="#cb11-70" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb11-71"><a href="#cb11-71" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-72"><a href="#cb11-72" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-73"><a href="#cb11-73" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-74"><a href="#cb11-74" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-75"><a href="#cb11-75" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-76"><a href="#cb11-76" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb11-77"><a href="#cb11-77" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb11-78"><a href="#cb11-78" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;inherit&quot;</span></span>
+<span id="cb11-79"><a href="#cb11-79" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-80"><a href="#cb11-80" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb11-81"><a href="#cb11-81" aria-hidden="true"></a>      <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb11-82"><a href="#cb11-82" aria-hidden="true"></a>      <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;48000&quot;</span>,</span>
+<span id="cb11-83"><a href="#cb11-83" aria-hidden="true"></a>      <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-84"><a href="#cb11-84" aria-hidden="true"></a>      <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb11-85"><a href="#cb11-85" aria-hidden="true"></a>      <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;4000&quot;</span>,</span>
+<span id="cb11-86"><a href="#cb11-86" aria-hidden="true"></a>      <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;lz4&quot;</span></span>
+<span id="cb11-87"><a href="#cb11-87" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb11-88"><a href="#cb11-88" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb11-89"><a href="#cb11-89" aria-hidden="true"></a>  ]</span>
+<span id="cb11-90"><a href="#cb11-90" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump the master node,
+which is a micro ZAP object and fixed in the <span class="math inline">1^{st}</span> dnode in the array.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --headds-masternode /dev/mapper/zdisk0:<span class="st">&quot;46000&quot;</span>:4000/2000</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>  <span class="st">&quot;dnode&quot;</span>:<span class="kw">{</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>    <span class="st">&quot;dn_type&quot;</span>:<span class="st">&quot;ZFS master node&quot;</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>    <span class="st">&quot;dn_bonustype&quot;</span>:<span class="ex">0</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>    <span class="st">&quot;dn_indblkshift&quot;</span>:<span class="ex">17</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>    <span class="st">&quot;dn_nlevels&quot;</span>:<span class="ex">1</span>,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>    <span class="st">&quot;dn_nblkptr&quot;</span>:<span class="ex">3</span>,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a>    <span class="st">&quot;dn_blkptr&quot;</span>:[</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a>      <span class="kw">{</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a>        <span class="st">&quot;vdev&quot;</span>:<span class="st">&quot;0&quot;</span>,</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a>        <span class="st">&quot;offset&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a>        <span class="st">&quot;asize&quot;</span>:<span class="st">&quot;2000&quot;</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a>        <span class="st">&quot;psize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>        <span class="st">&quot;lsize&quot;</span>:<span class="st">&quot;200&quot;</span>,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true"></a>        <span class="st">&quot;compressed&quot;</span>:<span class="st">&quot;uncompressed&quot;</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true"></a>      <span class="kw">}</span>,</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true"></a>      <span class="ex">....</span> output omitted ....</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true"></a>    ]</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true"></a>  <span class="kw">}</span>,</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true"></a>  <span class="st">&quot;Micro ZAP&quot;</span>:[</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true"></a>    <span class="ex">....</span> output omitted ....</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;ROOT&quot;</span>,</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">34</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true"></a>  ]</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>The ROOT object (“/”) is the <span class="math inline">34^{th}</span> object,
+located in the <span class="math inline">1^{st}</span> block (offset <span class="math inline">4a000</span>).
+In this simplest case,
+the ROOT’s dnode contains <em>embedded block pointer</em>,
+it is a micro ZAP object.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --root-dir /dev/mapper/zdisk0:<span class="st">&quot;4a000&quot;</span>:4000/2000:34</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>  <span class="st">&quot;Micro ZAP&quot;</span>:[</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;sbin&quot;</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">2</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;var&quot;</span>,</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">3</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;usr&quot;</span>,</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">4</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a>  ]</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>Dump the <code>sbin</code> directory,
+the <span class="math inline">2^{nd}</span> object in the <span class="math inline">0^{th}</span> block,
+from the output of indirect block pointer dumping,
+we knew that the block is located at <span class="math inline">46000</span>,
+the object contains embedded block pointer again.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --dir /dev/mapper/zdisk0:<span class="st">&quot;46000&quot;</span>:4000/2000:2</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a><span class="kw">{</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>  <span class="st">&quot;Micro ZAP&quot;</span>:[</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;zdump&quot;</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">128</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;&quot;</span>,</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">0</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true"></a>    <span class="kw">}</span>,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true"></a>    <span class="kw">{</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true"></a>      <span class="st">&quot;mze_name&quot;</span>:<span class="st">&quot;&quot;</span>,</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true"></a>      <span class="st">&quot;mze_value&quot;</span>:<span class="ex">0</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true"></a>    <span class="kw">}</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true"></a>  ]</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true"></a><span class="kw">}</span></span></code></pre></div></li>
+<li><p>The <code>/sbin/zdump</code> file is the<span class="math inline">128^{th}</span> object,
+located in the <span class="math inline">4^{th}</span> block (offset <span class="math inline">48000</span>),
+let’s dump it.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a>$ <span class="ex">zdump</span> --text /dev/mapper/zdisk0:<span class="st">&quot;48000&quot;</span>:4000/2000:128</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true"></a><span class="bu">echo</span> Hello ZFS</span></code></pre></div></li>
+</ol>
+</section>
+</section>
+<section id="recovering-removed-file" class="level1">
+<h1>Recovering removed file</h1>
+<p></p>
+</section>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>by himself 👍<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>If we create the ZVOL with <code>-s</code> option,
+there will only one level of block pointer.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</article>
+</body>
+</html>

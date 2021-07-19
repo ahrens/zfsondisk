@@ -1,0 +1,223 @@
+\usepackage[dvipsnames]{xcolor}
+\usepackage[%
+  breaklinks=true,%
+  colorlinks,%
+  citecolor=blue,%
+  filecolor=blue,%
+  linkcolor=blue,%
+  urlcolor=blue,%
+  bookmarksopen=true%
+  pdfstartview=FitW%
+]{hyperref}
+
+\usepackage{changepage}
+\usepackage{longtable}
+\newcolumntype{M}[1]{>{\minipage{\hsize}\arraybackslash}p{#1}<{\endminipage}}
+\newenvironment{LongTable4Columns}[8]
+{
+\begin{longtable}{#7}
+  \caption{#5}%
+  \label{tbl:#6} \\
+
+  \toprule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} & \textbf{#4}\\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{3}{c}%
+  {{\tablename\ \thetable{} -- continued from previous page}} \\
+  \midrule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} & \textbf{#4}\\
+  \midrule
+  \endhead
+
+  \multicolumn{3}{r}{{Continued on next page}} \\
+  \midrule
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  #8
+\end{longtable}
+}
+
+\newenvironment{LongTable3Columns}[7]
+{
+\begin{longtable}[c]{#6}
+  \caption{#4}%
+  \label{tbl:#5} \\
+
+  \toprule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} \\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{3}{c}%
+  {{\tablename\ \thetable{} -- continued from previous page}} \\
+  \midrule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} \\
+  \midrule
+  \endhead
+
+  \multicolumn{3}{r}{{Continued on next page}} \\
+  \midrule
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  #7
+\end{longtable}
+}
+
+\newenvironment{LongTableMovable3Columns}[7]
+{
+\begin{longtable}{#6}
+  \caption{#4}%
+  \label{tbl:#5} \\
+
+  \toprule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} \\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{3}{c}%
+  {{\tablename\ \thetable{} -- continued from previous page}} \\
+  \midrule
+  \textbf{#1} & \textbf{#2} & \textbf{#3} \\
+  \midrule
+  \endhead
+
+  \multicolumn{3}{r}{{Continued on next page}} \\
+  \midrule
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  #7
+\end{longtable}
+}
+
+\newenvironment{LongTable2Columns}[6]
+{
+\begin{longtable}[c]{#5}
+  \caption{#3}%
+  \label{tbl:#4} \\
+
+  \toprule
+  \textbf{#1} & \textbf{#2}\\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{2}{c}%
+  {{\tablename\ \thetable{} -- continued from previous page}} \\
+  \midrule
+  \textbf{#1} & \textbf{#2}\\
+  \midrule
+  \endhead
+
+  \multicolumn{2}{r}{{Continued on next page}} \\
+  \midrule
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  #6
+\end{longtable}
+}
+
+\usepackage{tikz}
+\usetikzlibrary{
+  arrows.meta,
+  positioning,
+  shapes,
+  calc,
+  intersections,
+  quotes,
+  angles,
+}
+\usepackage{graphicx,tipa,caption}
+\usepackage{enumitem}
+\setlist[description]{style=nextline}
+
+% Colors for listings
+\definecolor{lstkeyword}  {RGB}{0, 112, 32}
+\definecolor{lstkeywordG} {RGB}{153, 168, 87}
+\definecolor{lstkeywordR} {RGB}{144, 32, 0}
+\definecolor{lstkeywordO} {RGB}{255,165,0}
+\definecolor{lstcomment}  {RGB}{96, 160, 176}
+\definecolor{lstnumber}   {RGB}{188, 122, 0}
+\definecolor{lststring}   {rgb}{0.58,0,0.82}
+\definecolor{lstbg}       {RGB}{240,240,240}
+
+\usepackage{listings}
+\newcommand{\passthrough}[1]{#1}
+\lstset{columns=flexible}
+\makeatletter
+\lstset{language=C,
+  basicstyle=\lst@ifdisplaystyle\ttfamily\else\color{Bittersweet}\ttfamily\fi,
+  backgroundcolor=\color{lstbg},
+  keywordstyle=\color{lstkeyword},
+  stringstyle=\color{lststring},
+  commentstyle=\ttfamily\color{lstcomment},
+  captionpos=b,
+  numberstyle=\color{lstnumber},
+  frame=single,
+  framesep=4pt,
+  framerule=0pt,
+  xleftmargin=1em,
+  tabsize=2,
+  columns=flexible,
+  keepspaces=true,
+  breaklines=true,
+}
+\makeatother
+
+\lstdefinestyle{c}{language=C,
+ morekeywords={uint64_t, uint8_t, uint16_t, uint32_t}
+}
+
+% my personal bad taste ;), feel free to remove if you don't like it.
+\makeatletter
+  \@ifclassloaded{memoir}{%
+    \setlength\parindent{0pt}
+    \setlength{\marginparsep}{0pt}
+    \addtolength{\textwidth}{100pt}
+    \addtolength{\textheight}{6em}
+    \addtolength{\topmargin}{2em}
+    \addtolength{\headheight}{2em}
+    \setlength{\marginparwidth}{0pt}
+    \addtolength{\parskip}{1.25ex}
+    \setulmargins{4cm}{*}{*}
+    \setlrmargins{1in}{*}{*}
+    \addtolength{\cftbeforesectionskip}{2pt}
+    \setsecnumdepth{subsection}
+    \checkandfixthelayout
+  }
+\makeatother
+
+\usepackage{oldstyle}
+% Palatino for serif
+% WARNING: 1. put \emph{after} CJK setup!!!
+%          2. these packages make \triangle and \angle a bit smaller
+\usepackage{newpxtext}
+\usepackage{newpxmath}
+% Helvetica for sans serif
+\usepackage[scaled]{helvet}
+% Bera Mono for monospace
+\usepackage[scaled]{beramono}
+% \renewcommand*\familydefault{\sfdefault}
+\usepackage[T1]{fontenc}
+
+\renewcommand{\figurename}{Illustration}
+\renewcommand*{\arraystretch}{1.4}
+% the 1st parameter is the number of man page, and the 2nd is the name.
+\newcommand{\man}[2]{\textos{#1}\kern 0.16667em\textsc{\lowercase{#2}}}
+
+% for debugging
+\usepackage{kantlipsum} % e.g., \kant[3]
+\usepackage[noframe]{showframe}
+%\usepackage{showframe}

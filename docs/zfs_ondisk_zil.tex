@@ -1,0 +1,214 @@
+\chapter{ZFS Intent Log}\label{chap:zil}
+
+The \emph{ZFS intent log} (\emph{ZIL}) saves transaction records of system calls
+that change the file system in memory with enough information
+to be able to replay them.
+These are stored in memory until
+either the DMU transaction group (txg) commits them
+to the stable pool and they can be discarded,
+or they are flushed to the stable log (also in the pool)
+due to a fsync, \lstinline{O_DSYNC} or other synchronous requirement.
+In the event of a panic or power failure,
+the log records (transactions) are replayed.
+
+There is one ZIL per file system. Its on-disk (pool) format consists of 3 parts:
+
+\begin{itemize}
+\item ZIL header
+\item ZIL blocks
+\item ZIL records
+\end{itemize}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{Figures/zfs_zil_structure.pdf}
+  \caption{Overview of ZIL Structure}
+  \label{fig:zil_structure}
+\end{figure}
+
+A log record holds a system call transaction.
+Log blocks can hold many log records and the blocks are chained together.
+Each ZIL block contains a block pointer in the trailer(\lstinline{blkptr_t})
+to the next ZIL block in the chain.
+Log blocks can be different sizes.
+The ZIL header points to the first block in the chain.
+Note there is not a fixed place in the pool to hold blocks.
+They are dynamically allocated and freed as needed from the blocks available.
+The illustration above shows the ZIL structure
+showing log blocks and log records of different sizes:
+
+More details of the current ZIL on disk structures are given below.
+
+\section{ZIL Header}
+There is one of these per ZIL and it has a simple structure:
+
+\begin{lstlisting}[style=c]
+typedef struct zil_header {
+        uint64_t zh_claim_txg;
+        uint64_t zh_replay_seq;
+        blkptr_t zh_log;
+        uint64_t zh_claim_blk_seq;
+        uint64_t zh_flags;
+        uint64_t zh_claim_lr_seq;
+        uint64_t zh_pad[3];
+} zil_header_t;
+\end{lstlisting}
+
+\section{ZIL Blocks}
+
+ZIL blocks contain ZIL records.
+The blocks are allocated on demand and are of a variable size according to need.
+The size field is part of the \lstinline{blkptr_t}
+which points to a log block.
+Each block is filled with records and contains a \lstinline{zil_chain_t} at the end of the block:
+
+\begin{description}
+
+\item[ZIL Trailer]
+  \hfill
+\begin{lstlisting}[style=c]
+typedef struct zil_chain {
+        uint64_t zc_pad;
+        blkptr_t zc_next_blk;
+        uint64_t zc_nused;
+        zio_eck_t zc_eck;
+} zil_chain_t;
+\end{lstlisting}
+
+\item[ZIL Records]
+  \hfill\break
+  \begin{description}
+  \item[ZIL Record Common Structure]
+    ZIL records all start with a common section
+    followed by a record (transaction) specific structure.
+    The common log record structure and record types (values for \lstinline{lrc_txtype}) are:
+\begin{lstlisting}[style=c]
+typedef struct {
+        uint64_t	lrc_txtype;
+        uint64_t	lrc_reclen;
+        uint64_t	lrc_txg;
+        uint64_t	lrc_seq;
+} lr_t;
+#define	TX_COMMIT		0
+#define	TX_CREATE		1
+#define	TX_MKDIR		2
+#define	TX_MKXATTR		3
+#define	TX_SYMLINK		4
+#define	TX_REMOVE		5
+#define	TX_RMDIR		6
+#define	TX_LINK			7
+#define	TX_RENAME		8
+#define	TX_WRITE		9
+#define	TX_TRUNCATE		10
+#define	TX_SETATTR		11
+#define	TX_ACL_V0		12
+#define	TX_ACL			13
+#define	TX_CREATE_ACL		14
+#define	TX_CREATE_ATTR		15
+#define	TX_CREATE_ACL_ATTR 	16
+#define	TX_MKDIR_ACL		17
+#define	TX_MKDIR_ATTR		18
+#define	TX_MKDIR_ACL_ATTR	19
+#define	TX_WRITE2		20
+#define	TX_MAX_TYPE		21
+\end{lstlisting}
+
+  \item[ZIL Record Specific Strucgures]
+    For each of the record (transaction) types listed above
+    there is a specific structure
+    which embeds the common structure.
+    Within each record enough information is saved
+    in order to be able to replay the transaction
+    (usually one VOP call).
+    The VOP layer will pass in-memory pointers to vnodes.
+    These have to be converted to stable pool object identifiers (oids).
+    When replaying the transaction the VOP layer is called again.
+    To do this we reopen the object and pass it's vnode.
+    Some of the record specific structures are used for more than one transaction type.
+    The \lstinline{lr_create_t} record specific structure is used for:
+    \lstinline{TX_CREATE}, \lstinline{TX_MKDIR}, \lstinline{TX_MKXATTR} and \lstinline{TX_SYMLINK},
+    and \lstinline{lr_remove_t} is used for both
+
+    \lstinline{TX_REMOVE} and \lstinline{TX_RMDIR}.
+    All fields (other than strings and user data) are 64 bits wide.
+    This provides for a well defined alignment which allows for easy compatibility
+    between different architectures,
+    and easy endianness conversion if necessary.
+    Here's the definition of the record specific structures:
+
+\begin{lstlisting}[style=c]
+typedef struct {
+        lr_t	lr_common;
+        uint64_t	lr_doid;
+        uint64_t	lr_foid;
+        uint64_t	lr_mode;
+        uint64_t	lr_uid;
+        uint64_t	lr_gid;
+        uint64_t	lr_gen;
+        uint64_t	lr_crtime[2];
+        uint64_t	lr_rdev;
+} lr_create_t;
+typedef struct {
+        lr_create_t	lr_create;
+        uint64_t	lr_aclcnt;
+        uint64_t	lr_domcnt;
+        uint64_t	lr_fuidcnt;
+        uint64_t	lr_acl_bytes;
+        uint64_t	lr_acl_flags;
+} lr_acl_create_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_doid;
+} lr_remove_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_doid;
+        uint64_t	lr_link_obj;
+} lr_link_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_sdoid;
+        uint64_t	lr_tdoid;
+} lr_rename_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_foid;
+        uint64_t	lr_offset;
+        uint64_t	lr_length;
+        uint64_t	lr_blkoff;
+        blkptr_t	lr_blkptr;
+} lr_write_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_foid;
+        uint64_t	lr_offset;
+        uint64_t	lr_length;
+} lr_truncate_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_foid;
+        uint64_t	lr_mask;
+        uint64_t	lr_mode;
+        uint64_t	lr_uid;
+        uint64_t	lr_gid;
+        uint64_t	lr_size;
+        uint64_t	lr_atime[2];
+        uint64_t	lr_mtime[2];
+} lr_setattr_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_foid;
+        uint64_t	lr_aclcnt;
+} lr_acl_v0_t;
+typedef struct {
+        lr_t		lr_common;
+        uint64_t	lr_foid;
+        uint64_t	lr_aclcnt;
+        uint64_t	lr_domcnt;
+        uint64_t	lr_fuidcnt;
+        uint64_t	lr_acl_bytes;
+        uint64_t	lr_acl_flags;
+} lr_acl_t;
+\end{lstlisting}
+  \end{description}
+\end{description}

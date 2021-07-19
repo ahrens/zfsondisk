@@ -1,0 +1,65 @@
+\begin{tikzpicture}[
+  pics/.cd,
+  zap_leaf_entry/.style={
+    code={
+      \node (-struct) [zap, minimum width=5cm, text width=5cm] {
+        \begin{tabular}{l@{\hskip 2em}l}
+          uint8\_t  & le\_type = 252\\
+          uint8\_t  & le\_int\_size\\
+          uint16\_t & le\_next\\
+          uint16\_t & le\_name\_chunk\\
+          uint16\_t & le\_name\_length\\
+          uint16\_t & le\_value\_chunk\\
+          uint16\_t & le\_value\_length\\
+          uint32\_t & le\_cd\\
+          uint64\_t & le\_hash\\
+        \end{tabular}
+      };
+      \titleof{-struct}{zap_ru_color}{zap\_leaf\_entry};
+    }
+  },
+  zap_leaf_array/.style={
+    code={
+      \node (-struct) [zap, minimum width=5cm, text width=5cm] {
+        \begin{tabular}{l@{\hskip 2em}l}
+          uint8\_t & la\_type = 251\\
+          uint8\_t & la\_array[21]\\
+          uint16\_t & la\_next\\
+        \end{tabular}
+      };
+      \titleof{-struct}{zap_ru_color}{zap\_leaf\_array};
+    }
+  }
+]
+  \pic (entry0) {zap_leaf_entry};
+  \pic (entry1) [right=1cm of entry0-struct] {zap_leaf_entry};
+  \pic (entry2) [right=1cm of entry1-struct] {zap_leaf_entry};
+  \draw [->, zap_li_color]
+    ($(entry0-struct.north east)-(1.25cm,1.1875cm)$) -- ($(entry1-struct.north west)-(0,1.1875cm)$);
+  \draw [->, zap_li_color]
+    ($(entry1-struct.north east)-(1.25cm,1.1875cm)$) -- ($(entry2-struct.north west)-(0,1.1875cm)$);
+
+  \pic (array0) [below right=1cm and 0cm of entry0-struct.south west] {zap_leaf_array};
+  \pic (array1) [right=1cm of array0-struct] {zap_leaf_array};
+  \pic (array2) [below=.8cm of array0-struct] {zap_leaf_array};
+  \pic (array3) [right=1cm of array2-struct] {zap_leaf_array};
+  \pic (array4) [right=1cm of array3-struct] {zap_leaf_array};
+
+  \draw [->, zap_li_color, rounded corners=2pt]
+     ($(entry0-struct.north west)-(0,1.625)$) -- ++(-1cm, 0)
+  |- ($(array2-struct.north west)-(0,.25cm)$);
+  \draw [->, zap_li_color, rounded corners=2pt]
+     ($(entry0-struct.north west)-(0,2.425)$) -- ++(-.5cm, 0)
+  |- ($(array0-struct.north west)-(0,.25cm)$);
+  \draw [->, zap_li_color]
+    ($(array0-struct.north east)-(1.25cm,1.1875cm)$) -- ($(array1-struct.north west)-(0,1.1875cm)$);
+  \draw [->, zap_li_color]
+    ($(array2-struct.north east)-(1.25cm,1.1875cm)$) -- ($(array3-struct.north west)-(0,1.1875cm)$);
+  \draw [->, zap_li_color]
+    ($(array3-struct.north east)-(1.25cm,1.1875cm)$) -- ($(array4-struct.north west)-(0,1.1875cm)$);
+
+  \draw [thick, densely dashed, zap_li_color]
+     ($(entry0-struct.north west)+(-1cm,.75cm)$) coordinate (tmp)-- ++(6.75cm, 0)
+  -- ++(0, -5.25cm) -- ++(12cm, 0);
+  \titleof{tmp}{zap_ru_color}{one zap\_entry}
+\end{tikzpicture}

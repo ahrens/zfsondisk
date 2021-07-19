@@ -1,0 +1,196 @@
+\begin{tikzpicture}[%
+  every node/.style={
+    font=\ttfamily,
+    outer sep=0pt, inner sep=2pt,
+  },
+  objset_field/.style={
+    draw=none, rectangle, fill=objset_bg_color, text=objset_ru_color,
+    minimum width=6cm, text width=6cm, align=left,
+    minimum height=10.5pt
+  },
+  dnode/.style={
+    draw=dnode_li_color, fill=dnode_bg_color
+  },
+  dnode_field/.style={
+    draw=none, rectangle, fill=dnode_bg_color, text=dnode_ru_color,
+    minimum width=6cm, text width=6cm, align=left,
+    minimum height=10.5pt
+  },
+  blkptr/.style={
+    rectangle,
+    draw=blkptr_li_color, fill=blkptr_bg_color, text=blkptr_ru_color,
+  },
+  blkptr_shadow/.style={
+    minimum width=1.5cm, minimum height=1.8cm,
+    draw=blkptr_li_color!50, fill=blkptr_bg_color!50
+  },
+  data/.style={
+    fill=data_bg_color, draw=data_li_color,
+    minimum width=1.75cm, minimum height=1.25cm
+  },
+  pics/.cd,
+  blkptr_array/.style={
+    code = {
+      \node (-b3) [blkptr_shadow] {};
+      \node (-b2) [blkptr_shadow, below right=.2cm and .2cm of -b3.north west] {};
+      \node (-b1) [minimum width=1.5cm, minimum height=1.8cm,
+        draw=blkptr_li_color, fill=blkptr_bg_color,
+        below right=.2cm and .2cm of -b2.north west] {};
+    }
+  }
+]
+
+  \node (meta_dnode) [objset_field] {dnode\_phys\_t\hspace{3em} os\_metadnode;};
+  \node (zil_header) [objset_field, below=0 of meta_dnode]
+        {zil\_header\_t\hspace{3em} os\_zil\_header;};
+  \node (os_type) [objset_field, below=0 of zil_header]
+        {uint64\_t\hspace{5em} os\_type;};
+  \node (os_dots) [objset_field, below=0 of os_type]
+        {\hspace{7em}$\ldots$};
+
+  \node (dn_type) [dnode_field, below left=.5cm and 1cm of meta_dnode.north west]
+        {dn\_type\hspace{6.5em}DMU\_OT\_DNODE};
+  \node (dn_indblkshift) [dnode_field, below=0 of dn_type] {dn\_indblkshift;};
+  \node (dn_nlevels) [dnode_field, below=0 of dn_indblkshift] {dn\_nlevels\hspace{5em}1};
+  \node (dn_nblkptr) [dnode_field, below=0 of dn_nlevels] {dn\_nblkptr\hspace{5em}3};
+  \node (dn_dots) [dnode_field, below=0 of dn_nblkptr]
+        {\hspace{1em}$\ldots$};
+  \node (dn_blkptr) [dnode_field, below=0 of dn_dots] {dn\_blkptr;};
+  \node (dn_bonus) [dnode_field, below=0 of dn_blkptr] {dn\_bonus[BONUSLEN];};
+
+  \draw [densely dashed, dnode_li_color] (meta_dnode.north west) -- (dn_type.north east);
+  \draw [densely dashed, dnode_li_color] (meta_dnode.south west) -- (dn_bonus.south east);
+  \draw [dnode_li_color] (dn_type.north west) -- (dn_type.north east)
+    -- (dn_bonus.south east) -- (dn_bonus.south west) -- cycle;
+  \draw [ultra thin, dnode_li_color] (dn_blkptr.south west) -- (dn_blkptr.south east);
+  \draw [ultra thin, dnode_li_color] (dn_blkptr.north west) -- (dn_blkptr.north east);
+
+  \node (dva_array0) [blkptr, minimum height=1cm, minimum width=3cm,
+    below right=.75cm and 0cm of os_dots.south west]
+        {};
+  \node (dva_array1) [blkptr, minimum height=1cm, minimum width=3cm, right=0 of dva_array0]
+        {};
+  \node (dva_array2) [blkptr, minimum height=1cm, minimum width=3cm, right=0 of dva_array1]
+        {};
+  \draw [densely dashed, blkptr_li_color] (dn_blkptr.north east) -- (dva_array0.north west);
+  \draw [densely dashed, blkptr_li_color] (dn_blkptr.south east) -- (dva_array0.south west);
+
+  \begin{scope}[local bounding box=dnode_array0, name prefix=dnode_array0-]
+    \node (dnode_31) [dnode_array, below left=.75cm and -.5cm of dva_array0.south west] {};
+    \node (dnode_30) [dnode_array, left=0cm of dnode_31] {};
+    \node (dnode_dots) [dnode_array, left=0cm of dnode_30,minimum width=2cm, text width=1cm,
+    align=center] {\bfseries\large{$\dots$}};
+    \node (dnode_4) [dnode_array, left=0cm of dnode_dots] {};
+    \node (dnode_3) [dnode_array, left=0cm of dnode_4] {};
+    \node (dnode_2) [dnode_array, left=0cm of dnode_3] {};
+    \node (dnode_1) [dnode_array, left=0cm of dnode_2] {};
+    \node (dnode_0) [dnode_array, left=0cm of dnode_1] {};
+  \end{scope}
+
+  \begin{scope}[local bounding box=dnode_array1, name prefix=dnode_array1-]
+    \node (dnode_31) [dnode_array, below left=.75cm and -.5cm of dva_array1.south east] {};
+    \node (dnode_30) [dnode_array, left=0cm of dnode_31] {};
+    \node (dnode_dots) [dnode_array, left=0cm of dnode_30,minimum width=2cm, text width=1cm,
+    align=center] {\bfseries\large{$\dots$}};
+    \node (dnode_4) [dnode_array, left=0cm of dnode_dots] {};
+    \node (dnode_3) [dnode_array, left=0cm of dnode_4] {};
+    \node (dnode_2) [dnode_array, left=0cm of dnode_3] {};
+    \node (dnode_1) [dnode_array, left=0cm of dnode_2] {};
+    \node (dnode_0) [dnode_array, left=0cm of dnode_1] {};
+  \end{scope}
+
+  \begin{scope}[local bounding box=dnode_array2, name prefix=dnode_array2-]
+    \node (dnode_31) [dnode_array, below right=.75cm and 3cm of dva_array2.south east] {};
+    \node (dnode_30) [dnode_array, left=0cm of dnode_31] {};
+    \node (dnode_dots) [dnode_array, left=0cm of dnode_30,minimum width=2cm, text width=1cm,
+    align=center] {\bfseries\large{$\dots$}};
+    \node (dnode_4) [dnode_array, left=0cm of dnode_dots] {};
+    \node (dnode_3) [dnode_array, left=0cm of dnode_4] {};
+    \node (dnode_2) [dnode_array, left=0cm of dnode_3] {};
+    \node (dnode_1) [dnode_array, left=0cm of dnode_2] {};
+    \node (dnode_0) [dnode_array, left=0cm of dnode_1] {};
+  \end{scope}
+  \foreach \i in {0,...,4} {
+    \node [draw=none, text=dnode_ru_color, above=0cm of dnode_array0-dnode_\i] {\i};
+  }
+  \draw [->, dnode_li_color] (dva_array0.south) -- ($(dnode_array0-dnode_dots.north) - (.5cm,0)$);
+  \draw [->, dnode_li_color] (dva_array1.south) -- ($(dnode_array1-dnode_dots.north) - (.5cm,0)$);
+  \draw [->, dnode_li_color] (dva_array2.south) -- ($(dnode_array2-dnode_dots.north) - (.5cm,0)$);
+
+  \node (dn_type) [dnode_field, below=.75cm of dnode_array0-dnode_dots, xshift=-1cm, minimum width=5cm, text width=5cm] {dn\_type};
+  \node (dn_indblkshift) [dnode_field, below=0 of dn_type, minimum width=5cm, text width=5cm] {dn\_indblkshift;};
+  \node (dn_nlevels) [dnode_field, below=0 of dn_indblkshift, minimum width=5cm, text width=5cm] {dn\_nlevels\hspace{8em}3};
+  \node (dn_nblkptr) [dnode_field, below=0 of dn_nlevels, minimum width=5cm, text width=5cm] {dn\_nblkptr\hspace{8em}3};
+  \node (dn_dots) [dnode_field, below=0 of dn_nblkptr, minimum width=5cm, text width=5cm]
+        {\hspace{1em}$\ldots$};
+  \node (dn_blkptr) [dnode_field, below=0 of dn_dots, minimum width=5cm, text width=5cm] {dn\_blkptr;};
+  \node (dn_bonus) [dnode_field, below=0 of dn_blkptr, minimum width=5cm, text width=5cm] {dn\_bnous[BONUSLEN];};
+  \draw [dnode_li_color] (dn_type.north west) -- (dn_type.north east)
+    -- (dn_bonus.south east) -- (dn_bonus.south west) -- cycle;
+  \draw [ultra thin, dnode_li_color] (dn_blkptr.south west) -- (dn_blkptr.south east);
+  \draw [ultra thin, dnode_li_color] (dn_blkptr.north west) -- (dn_blkptr.north east);
+  \draw [densely dashed, dnode_li_color] (dnode_array0-dnode_4.south west) -- (dn_type.north west);
+  \draw [densely dashed, dnode_li_color] (dnode_array0-dnode_4.south east) -- (dn_type.north east);
+
+  \node (dva_array0) [blkptr, minimum height=1.5cm, minimum width=3cm, right=1.25cm of dn_blkptr, yshift=1cm]
+        {};
+  \node (dva_array1) [blkptr, minimum height=1.5cm, minimum width=3cm, right=0 of dva_array0]
+        {};
+  \node (dva_array2) [blkptr, minimum height=1.5cm, minimum width=3cm, right=0 of dva_array1]
+        {};
+
+  \draw [densely dashed, blkptr_li_color] (dn_blkptr.north east) -- (dva_array0.north west);
+  \draw [densely dashed, blkptr_li_color] (dn_blkptr.south east) -- (dva_array0.south west);
+  \foreach \i in {0,1,2} {
+    \node (array\i_dva3) [below right=0 of dva_array\i.north west, text=blkptr_ru_color] {dva3};
+    \node (array\i_dva2) [below right=0 of array\i_dva3.south east, xshift=-10pt, yshift=-1ex, text=blkptr_ru_color]
+          {dva2};
+    \node (array\i_dva1) [below right=0 of array\i_dva2.south east, xshift=-10pt, yshift=-1ex, text=blkptr_ru_color]
+          {dva1};
+    \pic [below=1.25cm of array\i_dva2] (blkptr_array\i) {blkptr_array};
+    \draw [->, blkptr_li_color] (array\i_dva3.south) coordinate (tmp) -- (tmp |- blkptr_array\i-b3.north);
+    \draw [->, blkptr_li_color] (array\i_dva2.south) coordinate (tmp) -- (tmp |- blkptr_array\i-b2.north);
+    \draw [->, blkptr_li_color] (array\i_dva1.south) coordinate (tmp) -- (tmp |- blkptr_array\i-b1.north);
+    \draw [blkptr_li_color] ($(blkptr_array\i-b1.north west)-(0cm,.25cm)$) -- ($(blkptr_array\i-b1.north east)-(0cm,.25cm)$);
+    \draw [blkptr_li_color]($(blkptr_array\i-b1.north west)-(0cm,.5cm)$) -- ($(blkptr_array\i-b1.north east)-(0cm,.5cm)$);
+    \draw [blkptr_li_color]($(blkptr_array\i-b1.south west)+(0cm,.25cm)$) -- ($(blkptr_array\i-b1.south east)+(0cm,.25cm)$);
+  }
+
+  \pic [below=.75cm of blkptr_array0-b2] (blkptr_array4) {blkptr_array};
+  \pic [left=.75cm of blkptr_array4-b3] (blkptr_array3) {blkptr_array};
+  \pic [right=.75cm of blkptr_array4-b3] (blkptr_array5) {blkptr_array};
+  \draw [->, blkptr_li_color, rounded corners=2pt]
+      ($(blkptr_array0-b1.north west)-(0cm,.125cm)$) -- ++(-2cm,0) coordinate(tmp)
+      -- (tmp |- blkptr_array3-b1.north);
+
+  \pic [below=.75cm of blkptr_array2-b2] (blkptr_array6) {blkptr_array};
+  \pic [right=.75cm of blkptr_array6-b3] (blkptr_array7) {blkptr_array};
+
+  \foreach \i in {3,...,7} {
+    \draw [blkptr_li_color] ($(blkptr_array\i-b1.north west)-(0cm,.25cm)$) -- ($(blkptr_array\i-b1.north east)-(0cm,.25cm)$);
+    \draw [blkptr_li_color] ($(blkptr_array\i-b1.north west)-(0cm,.5cm)$) -- ($(blkptr_array\i-b1.north east)-(0cm,.5cm)$);
+    \draw [blkptr_li_color] ($(blkptr_array\i-b1.south west)+(0cm,.25cm)$) -- ($(blkptr_array\i-b1.south east)+(0cm,.25cm)$);
+  }
+  \draw [blkptr_li_color] ($(blkptr_array7-b1.south west)+(0cm,.5cm)$) -- ($(blkptr_array7-b1.south east)+(0cm,.5cm)$);
+  \node [right=.6cm of blkptr_array5-b1] {\bfseries\Large{$\ldots$}};
+
+  \node (d0) [data, below left=.75cm and 1.25cm of blkptr_array3-b1] {};
+  \foreach \i [evaluate=\i as \prev using \i-1] in {1,...,4} {
+    \node (d\i) [data, right=.25cm of d\prev] {};
+  }
+  \node (data_dots) [right=.15cm of d4,text width=1cm, align=center] {\bfseries\Large{$\ldots$}};
+  \node (d5) [data, right=.25cm of data_dots] {};
+  \node (d6) [data, right=.25cm of d5] {};
+
+  \draw [->,data_li_color,rounded corners=2pt] ($(blkptr_array3-b1.north west)-(0cm,.125cm)$)
+      -- ++(-2.85cm,0cm) coordinate(tmp) -- (tmp |- d0.north);
+
+  \node (l0) [draw=none, font=\sffamily, left=.5cm of d0] {Level 0};
+  \node (l1) [draw=none, font=\sffamily, above=2cm of l0] {Level 1};
+  \node (l2) [draw=none, font=\sffamily, above=2 of l1] {Level 2};
+
+  \draw [ds_li_color] (meta_dnode.north west) -- (meta_dnode.north east)
+    -- (os_dots.south east) -- (os_dots.south west) -- cycle;
+  \draw [ultra thin, ds_li_color] (meta_dnode.south west) -- (meta_dnode.south east);
+
+\end{tikzpicture}

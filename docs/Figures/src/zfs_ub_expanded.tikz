@@ -1,0 +1,65 @@
+\begin{tikzpicture}
+  \node (label0) [vdev] {Label 0};
+  \node (label1) [vdev, right=0cm of label0.east] {Label 1};
+  \node (dots)   [vdev, right=0cm of label1.east, minimum width=4cm] {};
+  \node (label2) [vdev, right=0cm of dots.east] {Label 2};
+  \node (label3) [vdev, right=0cm of label2.east] {Label 3};
+
+  \node (pad) [labelitem,below left=1cm and 2cm of label0.south west] {Blank Space};
+  \node (be)  [labelitem,right=0cm of pad.east] {Boot Env};
+  \node (config)  [labelitem,right=0cm of be.east, minimum width=5cm, text width=5cm] %
+        {Name/Value Pairs };
+  \begin{scope} [local bounding box=ubs]
+  \node (ub0)  [ubcell,right=0cm of config.east, minimum width=.5cm, text width=.5cm] {};
+  \node (ub1)  [ubcell,right=0cm of ub0.east] {};
+  \node (ub2)  [ubcell,right=0cm of ub1.east] {};
+  \node (ub3)  [ubcell,right=0cm of ub2.east] {};
+  \node (ub4)  [ubcell,right=0cm of ub3.east] {};
+  \node (ub5)  [ubcell,right=0cm of ub4.east] {};
+  \node (ub6)  [ubcell,right=0cm of ub5.east] {};
+  \node (ub7)  [ubcell,right=0cm of ub6.east] {};
+  \node (ub8)  [ubcell,right=0cm of ub7.east] {};
+  \node (ub126)  [ubcell,right=0cm of ub8.east] {};
+  \node (ub127)  [ubcell,right=0cm of ub126.east] {};
+  \end{scope}
+  \node (ubarray) at (ubs.center) [anchor=center, fill=white, minimum height=.8cm, %
+    text=label_ru_color, fill=label_bg_color] {Uberblock Array};
+
+  \node (ub0_struct) [%
+    draw, fill=gray!30,
+    below left =.5cm and 0cm of ub0.south, %
+    xshift=1cm, minimum width=4cm,
+  ] {%
+    \begin{tabular}{p{2cm}l}
+      uint64\_t   & ub\_magic\\
+      uint64\_t   & ub\_version\\
+      uint64\_t   & ub\_txg\\
+      uint64\_t   & ub\_guid\_sum\\
+      uint64\_t   & ub\_timestamp\\
+      blkptr\_t   & ub\_rootbp
+    \end{tabular}
+  };
+  \node (ub1_struct) [%
+    draw=dnode_li_color, fill=dnode_bg_color,
+    below right =.55cm and 1cm of ub0_struct.north west, %
+    xshift=1cm, minimum width=4cm,
+  ] {%
+    \begin{tabular}{p{2cm}l}
+      uint64\_t   & ub\_magic\\
+      uint64\_t   & ub\_version\\
+      uint64\_t   & ub\_txg\\
+      uint64\_t   & ub\_guid\_sum\\
+      uint64\_t   & ub\_timestamp\\
+      blkptr\_t   & ub\_rootbp
+    \end{tabular}
+  };
+  \node (uberblock_phys_t) [right=.25cm of ub1_struct.north east, yshift=.15cm, rotate=-90] {uberblock\_phys\_t};
+  \node (uberblock_phys_t) [below=0cm of ub1_struct.south] {active uberblock};
+
+  \draw [densely dashed] (ub0.south west) -- (ub0_struct.north west);
+  \draw [densely dashed] (ub0.south east) -- (ub0_struct.north east);
+  \draw [densely dashed] (ub1.south west) -- (ub1_struct.north west);
+  \draw [densely dashed] (ub1.south east) -- (ub1_struct.north east);
+  \draw [densely dashed] (label0.south west) -- (pad.north west);
+  \draw [densely dashed] (label0.south east) -- (ub127.north east);
+\end{tikzpicture}
