@@ -1,0 +1,413 @@
+\chapter{Dataset and Snapshot Layer}\label{chap:dsl}
+
+The \emph{Dataset and Snapshot Layer}, or \emph{DSL}  provides a mechanism
+for describing and managing relationships-between and properties-of object sets.
+Before describing the DSL and the relationships it describes,
+a brief overview of the various flavors of object sets is necessary.
+
+\subsection{Object Set Overview}
+
+ZFS provides the ability to create four kinds of object sets:
+\emph{filesystems}, \emph{clones}, \emph{snapshots}, and \emph{volumes}.
+
+\begin{itemize}
+  \item{ZFS filesystems:}
+  A filesystem stores and organizes objects in an easily accessible, POSIX compliant manner.
+  \item{ZFS clone:}
+  A clone is identical to a filesystem with the exception of its origin.
+  Clones originate from snapshots and their initial contents are identical to
+  that of the snapshot from which it originated.
+  \item{ZFS snapshot:}
+  A snapshot is a read-only version of a filesystem, clone,
+  or volume at a particular point in time.
+  \item{ZFS volume:}
+  A volume is a logical volume that is exported by ZFS as a block device.
+\end{itemize}
+
+ZFS supports several operations and/or configurations
+which cause interdependencies amongst object sets.
+The purpose of the DSL is to manage these relationships.
+The following is a list of such relationships.
+
+\begin{itemize}
+\item{Clones:}
+  A clone is related to the snapshot from which it originated.
+  Once a clone is created,
+  the snapshot in which it originated can not be deleted unless the clone is also deleted.
+\item{Snapshots:}
+  A snapshot is a point-in-time image of the data in the object set in which it was created.
+  A filesystem, clone, or volume can not be destroyed unless its snapshots are also destroyed.
+\item{Children:}
+  ZFS support hierarchically structured object sets;
+  object sets within object sets.
+  A child is dependent on the existence of its parent.
+  A parent can not be destroyed without first destroying all children.
+\end{itemize}
+
+\section{DSL Infrastructure}
+
+Each object set is represented in the DSL as a dataset.
+A dataset manages space consumption statistics for an object set,
+contains object set location information,
+and keeps track of any snapshots inter-dependencies.
+
+Datasets are grouped together hierarchically into collections called Dataset Directories.
+Dataset Directories manage a related grouping of datasets and the properties
+associated with that grouping.
+A DSL directory always has exactly one “active dataset”.
+All other datasets under the DSL directory are related to the “active” dataset
+through snapshots, clones, or child/parent dependencies.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\textwidth]{Figures/zfs_dsl_infra.pdf}
+  \caption{DSL Infrastructure}
+  \label{fig:dsl_infra}
+\end{figure}
+
+The Illustration~\ref{fig:dsl_infra} shows the DSL infrastructure
+including a pictorial view of
+how object set relationships are described via the DSL datasets and DSL directories.
+The top level DSL Directory can be seen at the top/center of this figure.
+Directly below the DSL Directory is the “active dataset”.
+The active dataset represents the live  filesystem.
+Originating from the active dataset is a linked list of snapshots
+which have been taken at different points in time.
+Each dataset structure points to a DMU Object Set
+which is the actual object set containing object data.
+To the left of the top level DSL Directory is a child ZAP object
+containing a listing of all child/parent dependencies.
+To the right of the DSL directory is a properties ZAP object
+containing properties for the datasets within this DSL directory.
+A listing of all properties can be seen in Table~\ref{tbl:dd_property} below.
+
+A detailed description of Datasets and DSL Directories are described
+in the \nameref{sec:ds_internals}
+(section \ref{sec:ds_internals})
+and \nameref{sec:dsl_dir_internals}
+(section \ref{sec:dsl_dir_internals})
+sections below.
+
+\section{DSL Implementation Details}\label{sec:dsl_details}
+
+The DSL is implemented as an object set of type \lstinline{DMU_OST_META}.
+This object set is often called the \emph{Meta Object Set}, or \emph{MOS}.
+There is only one MOS per pool and the uberblock (see Chapter~\ref{chap:vdev}) points to it directly.
+
+There is a single distinguished object in the Meta Object Set.
+This object is called the object directory
+and is always located in the second element of the dnode array (index 1).
+All objects, with the exception of the object directory,
+can be located by traversing through a set of object references starting at this object.
+
+\subsection{The object directory}
+
+The object directory is a ZAP object (an object containing name/value pairs --
+see Chapter~\ref{chap:zap} for a description of ZAP objects)
+containing three attribute pairs (name/value) named:
+root\_dataset, config, and sync\_bplist.
+
+\begin{description}
+\item[root\_dataset:]
+  The ``root\_dataset''  attribute contains a 64 bit integer value
+  identifying the object number of the root DSL directory for the pool.
+  The root DSL directory is a special object
+  whose contents reference all top level datasets within the pool.
+  The ``root\_dataset'' directory,
+  is an object of type \lstinline{DMU_OT_DSL_DIR}
+  and will be explained in greater detail in Section~\ref{sec:dsl_dir_internals}: \nameref{sec:dsl_dir_internals}
+
+\item[config:]
+  The “config” attribute contains a 64 bit integer value
+  identifying the object number for an object of type \lstinline{DMU_OT_PACKED_NVLIST}.
+  This object contains XDR\_EN-CODED name value pairs
+  describing this pools vdev configuration.
+  Its contents are similar to those described in Section~\ref{subsec:nvlist}: \nameref{subsec:nvlist}.
+
+\item[sync\_bplist:]
+  The ``sync\_bplist'' attribute contains a 64 bit integer value
+  identifying the object number for an object of type \lstinline{DMU_OT_SYNC_BPLIST}.
+  This object contains a list of block pointers which need to be freed during the next transaction.
+\end{description}
+
+The illustration below shows the meta object set (MOS)
+in relation to the uberblock and label structures discussed in Chapter~\ref{chap:vdev}.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\textwidth]{Figures/zfs_ondisk_mos.pdf}
+  \caption{Meta Object Set}
+  \label{fig:mos}
+\end{figure}
+
+\section{Dataset Internals}\label{sec:ds_internals}
+
+Datasets are stored as an object of type \lstinline{DMU_OT_DSL_DATASET}.
+This object type uses the bonus buffer in the \lstinline{dnode_phys_t}
+to hold a \lstinline{dsl_dataset_phys_t} structure.
+The contents of the \lstinline{dsl_dataset_phys_t} structure are shown below.
+
+\begin{description}
+\item[uint64\_t ds\_dir\_obj]
+  Object number of the DSL directory referencing this dataset.
+
+\item[uint64\_t ds\_prev\_snap\_obj]
+  If this dataset represents a filesystem, volume, or clone,
+  this field contains the 64 bit object number for the most recent snapshot taken;
+  this field is zero if no snapshots have been taken.
+
+  If this dataset represents a snapshot,
+  this field contains the 64 bit object number for the snapshot taken prior to this snapshot.
+  This field is zero if there are no previous snapshots.
+
+\item[uint64\_t ds\_prev\_snap\_txg]
+  The transaction group number when the previous snapshot
+  (pointed to by \lstinline{ds_prev_snap_obj}) was taken.
+
+\item[uint64\_t ds\_next\_snap\_ob]
+  This field is only used for datasets representing snapshots.
+  It contains the object number of the dataset
+  which is the most recent snapshot.
+  This field is always zero for datasets representing clones, volumes, or filesystems.
+
+\item[uint64\_t ds\_snapnames\_zapobj]
+  Object number of a ZAP object (see Chapter~\ref{chap:zap})
+  containing name value pairs for each snapshot of this dataset.
+  Each pair contains the name of the snapshot
+  and the object number associated with it's DSL dataset structure.
+
+\item[uint64\_t ds\_num\_children]
+  Always zero if not a snapshot.
+  For snapshots, this is the number of references to this snapshot: 1
+  (from the next snapshot taken, or from the active dataset if no snapshots have been taken)
+  + the number of clones originating from this snapshot.
+
+\item[uint64\_t ds\_creation\_time]
+  Seconds since January $1^{st}$ 1970 (GMT) when this dataset was created.
+
+\item[uint64\_t ds\_creation\_txg]
+  The transaction group number in which this dataset  was created.
+
+\item[uint64\_t ds\_deadlist\_obj]
+  The object number of the deadlist (an array of blkptr's deleted since the last snapshot).
+
+\item[uint64\_t ds\_used\_bytes]
+  unique bytes used by the object set represented by this dataset
+
+\item[uint64\_t ds\_compressed\_bytes]
+  number of compressed bytes in the object set represented by this dataset
+
+\item[uint64\_t ds\_uncompressed\_bytes]
+  number of uncompressed bytes in the object set represented by this dataset
+
+\item[uint64\_t ds\_unique\_bytes]
+  When a snapshot is taken,
+  its initial contents are identical to that of the active copy of the data.
+  As the data changes in the active copy,
+  more and more data becomes unique to the snapshot
+  (the data diverges from the snapshot).
+  As that happens, the amount of data unique to the snapshot increases.
+  The amount of unique snapshot data is stored in this field
+  it is zero for clones, volumes, and filesystems.
+
+\item[uint64\_t ds\_fsid\_guid]
+  64 bit ID that is guaranteed to be unique amongst all currently open datasets.
+  Note, this ID could change between successive dataset opens.
+
+\item[uint64\_t ds\_guid]
+  64 bit global id for this dataset.
+  This value never changes during the lifetime of the object set.
+
+\item[uint64\_t ds\_restoring]
+  The field is set to ``1'' if ZFS is in the process of
+  restoring to this dataset through ``'zfs restore''
+  \verbfootnote{See the ZFS Admin Guide for information about the zfs command.}
+
+\item[blkptr\_t ds\_bp]
+  Block pointer containing the location of the object set that this dataset represents.
+\end{description}
+
+\section{DSL Directory Internals}\label{sec:dsl_dir_internals}
+
+The DSL Directory object contains a \lstinline{dsl_dir_phys_t} structure in its bonus buffer.
+The contents of this structure are described in detail below.
+
+\begin{description}
+\item[uint64\_t dd\_creation\_time]
+  Seconds since January 1st, 1970 (GMT) when this DSL directory was created.
+
+\item[uint64\_t dd\_head\_dataset\_obj]
+  64 bit object number of the active dataset object
+
+\item[uint64\_t dd\_parent\_obj]
+  64 bit object number of the parent DSL directory
+
+\item[uint64\_t dd\_clone\_parent\_obj]
+  For cloned object sets, this field contains the object number of snapshot used to create this clone.
+
+\item[uint64\_t dd\_child\_dir\_zapobj]
+  Object number of a ZAP object containing name-value pairs for each child of this DSL directory.
+
+\item[uint64\_t dd\_used\_bytes]
+  Number of bytes used by all datasets within this directory:
+  includes any snapshot and child dataset used bytes.
+
+\item[uint64\_t dd\_compressed\_bytes]
+  Number of compressed bytes for all datasets within this DSL directory.
+
+\item[uint64\_t dd\_uncompressed\_bytes]
+  Number of uncompressed bytes for all datasets within this DSL directory.
+
+\item[uint64\_t dd\_quota]
+  Designated quota, if any, which can not be exceeded by the datasets within this DSL directory.
+
+\item[uint64\_t dd\_reserved]
+  The amount of space reserved for consumption by the datasets within this DSL directory.
+
+\item[uint64\_t dd\_props\_zapobj]
+  64 bit object number of a ZAP object containing the properties
+  for all datasets within this DSL directory.
+  Only the non-inherited/locally set values are represented in this ZAP object.
+  Default, inherited values are inferred when there is an absence of an entry.
+\end{description}
+
+\begin{LongTable3Columns}{Property}{Description}{Values}
+  {Editable Property Values stored in the dd\_props\_zabobj}{dd_property}
+  {lp{.45\textwidth}p{.3\textwidth}}
+  {
+    aclinherit
+    & Controls inheritance behavior for datasets.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item discard = 0
+        \item noallow = 1
+        \item passthrough = 3
+        \item secure = 4 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    aclmode
+    & Controls chmod and file/dir creation behavior for datasets.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item discard = 0
+        \item groupmask = 2 (default)
+        \item passthrough = 3
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    atime
+    & Controls whether atime is updated on objects within a dataset.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item off = 0
+        \item on = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    checksum
+    & Checksum algorithm for all datasets within this DSL Directory.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item off = 0
+        \item on = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    compression
+    & Compression algorithm for all datasets within this DSL Directory.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item off = 0 (default)
+        \item on = 1
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    devices
+    & Controls whether device nodes can be opened on datasets.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item devices = 0
+        \item nodevices = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    exec
+    & Controls whether files can be executed on a dataset.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item noexec = 0
+        \item exec = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    mountpoint
+    & Mountpoint path for datasets within this DSL Directory.
+    & \begin{minipage}[t]{.3\textwidth}
+        string
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    quota
+    & Limits the amount of space all datasets within a DSL directory can consume.
+    & quota size in bytes or zero for no quota (default)
+    \rule[-.5ex]{0pt}{0pt}\\
+    readonly
+    & Controls whether objects can be modified on a dataset.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item readwrite = 0 (default)
+        \item readonly  = 1
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    recordsize
+    & Block Size for all objects within the datasets contained in this DSL Directory
+    & record size in bytes
+    \rule[-.5ex]{0pt}{0pt}\\
+    reservation
+    & Amount of space reserved for this DSL Directory, including all child datasets and child DSL Directories.
+    & reservation size in bytes
+    \rule[-.5ex]{0pt}{0pt}\\
+    setuid
+    & Controls whether the set-UID bit is respected on a dataset.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item nosetuid  = 0
+        \item setuid = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    sharenfs
+    & Controls whether  the datasets in a DSL Directory  are shared by NFS.
+    & string -- any valid nfs share options
+    \rule[-.5ex]{0pt}{0pt}\\
+    snapdir
+    & Controls whether \lstinline{.zfs} is hidden or visible in the root filesystem.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item hidden  = 0
+        \item visible = 1 (default)
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+    volblocksize
+    & For volumes, specifies the block size of the volume.
+      The blocksize cannot be changed once the volume has been written,
+      so it should be set at volume creation time
+    & between 512 to 128K, powers of two. Defaults to 8K.
+    \rule[-.5ex]{0pt}{0pt}\\
+    volsize
+    & Volume size, only applicable to volumes.
+    & volume size in bytes
+    \rule[-.5ex]{0pt}{0pt}\\
+    zoned
+    & Controls whether a dataset is managed through a local zone.
+    & \begin{minipage}[t]{.3\textwidth}
+        \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt, noitemsep]
+        \item off  = 0 (default)
+        \item on = 1
+        \end{itemize}
+      \end{minipage}
+    \rule[-.5ex]{0pt}{0pt}\\
+  }
+\end{LongTable3Columns}

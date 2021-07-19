@@ -1,17 +1,4 @@
----
-title:	ZFS On-disk Specification (draft)
-author:
- - Matthew Ahrens \<mahrens@delphix.com\>
-documentclass:	memoir
-lang:	en-US
-secPrefix: ""
-tblPrefix: Table.
-figPrefix: Illustration.
----
-
-`<p><a href="zfs_internals.md.pdf">Click here</a> for a printer friendly PDF version.</p>`{=html}
-
-# Introduction
+\chapter*{Introduction}\addcontentsline{toc}{chapter}{Introduction}
 
 ZFS is a new filesystem technology
 that provides immense capacity (128-bit),
@@ -30,23 +17,24 @@ Filesystems dynamically grow and shrink as needed
 without the need to re-partition underlying storage.
 
 ZFS provides a truly consistent on-disk format,
-but using a _copy on write_ (_COW_) transaction model.
+but using a \emph{copy on write} (\emph{COW}) transaction model.
 This model ensures that on disk data is never overwritten
 and all on disk updates are done atomically.
 
 The ZFS software is comprised of seven distinct pieces:
-the _SPA_ (_Storage Pool Allocator_),
-the _DSL_ (_Dataset and Snapshot Layer_),
-the _DMU_ (_Data Management Layer_),
-the _ZAP_ (_ZFS Attribute Processor_),
-the _ ZPL_ (_ZFS Posix layer_),
-the _ZIL_ (_ZFS Intent Log_),
-and _ZVOL_ (_ZFS Volume_).
+the \emph{SPA} (Storage Pool Allocator),
+the \emph{DSL} (Dataset and Snapshot Layer),
+the \emph{DMU} (Data Management Layer),
+the \emph{ZAP} (ZFS Attribute Processor),
+the \emph{ZPL} (ZFS Posix Layer),
+the \emph{ZIL} (ZFS Intent Log),
+and \emph{ZVOL} (ZFS Volume).
 The on-disk structures associated with each of these pieces are explained in the following chapters:
-SPA (Chapters 1 and 2),
-DSL (Chapter 5),
-DMU (Chapter 3),
-ZAP (Chapter 4),
-ZPL (Chapter 6),
-ZIL (Chapter 7),
-ZVOL (Chapter 8).
+SPA ({Chapters \ref{chap:vdev} and \ref{chap:blkptr}}),
+DSL (Chapter \ref{chap:dsl}),
+DMU (Chapter \ref{chap:dmu}),
+ZAP (Chapter \ref{chap:zap}),
+ZPL (Chapter \ref{chap:zpl}),
+ZIL (Chapter \ref{chap:zil}),
+ZVOL (Chapter \ref{chap:zvol}).
+

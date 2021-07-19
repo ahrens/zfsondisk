@@ -36,7 +36,7 @@ $(PUBDIR)/%.md.html: $$($$*_mdparts) $(HTMLSTYLES) $(FIGURESRC)
 
 TEXTEMPLATE = templates/template.tex
 
-$(PUBDIR)/%.md.pdf: $$($$*_mdparts) $(TEXTEMPLATE) $(TEXTRA) $(FIGURESRC)
+$(PUBDIR)/%.md.pdf: $$($$*_mdparts) $(TEXTEMPLATE) $(FIGURESRC)
 	@if [ -d $(FIGURESDIR) -a -f $(FIGURESDIR)/Makefile ]; 			\
 	 then 									\
 		printf "%-12s %s\n" "Generating" "figures";			\

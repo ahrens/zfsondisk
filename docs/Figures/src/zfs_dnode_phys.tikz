@@ -1,0 +1,42 @@
+\begin{tikzpicture}[%
+  every node/.style={
+    font=\ttfamily,
+    outer sep=0pt, inner sep=2pt,
+  },
+  field/.style={
+    draw=none, rectangle, fill=dnode_bg_color, text=dnode_ru_color,
+    minimum width=6cm, text width=6cm, align=left,
+    minimum height=10.5pt
+  }
+]
+  \node (dn_type) [field] {uint8\_t\hspace{3em} dn\_type;};
+  \node (dn_indblkshift) [field, below=0 of dn_type] {uint8\_t\hspace{3em} dn\_indblkshift;};
+  \node (dn_nlevels) [field, below=0 of dn_indblkshift] {uint8\_t\hspace{3em} dn\_nlevels;};
+  \node (dn_nblkptr) [field, below=0 of dn_nlevels] {uint8\_t\hspace{3em} dn\_nblkptr;};
+  \node (dn_bonustype) [field, below=0 of dn_nblkptr] {uint8\_t\hspace{3em} dn\_bonustype;};
+  \node (dn_checksum) [field, below=0 of dn_bonustype] {uint8\_t\hspace{3em} dn\_checksum;};
+  \node (dn_compress) [field, below=0 of dn_checksum] {uint8\_t\hspace{3em} dn\_compress;};
+  \node (dn_pad1) [field, below=0 of dn_compress] {uint8\_t\hspace{3em} dn\_pad[1];};
+  \node (dn_datablkszsec) [field, below=0 of dn_pad1] {uint16\_t\hspace{2.5em} dn\_datablkszsec;};
+  \node (dn_bonuslen) [field, below=0 of dn_datablkszsec] {uint16\_t\hspace{2.5em} dn\_bonuslen;};
+  \node (dn_pad2) [field, below=0 of dn_bonuslen] {uint8\_t\hspace{3em} dn\_pad2[4];};
+  \node (dn_maxblkid) [field, below=0 of dn_pad2] {uint64\_t\hspace{2.5em} dn\_maxblkid;};
+  \node (dn_secphys) [field, below=0 of dn_maxblkid] {uint64\_t\hspace{2.5em} dn\_secphys;};
+  \node (dn_pad3) [field, below=0 of dn_secphys] {uint64\_t\hspace{2.5em} dn\_pad3[4];};
+  \node (dn_blkptr) [field, below=0 of dn_pad3] {blkptr\_t\hspace{2.5em} dn\_blkptr;};
+  \node (dn_bonus) [field, below=0 of dn_blkptr] {uint8\_t\hspace{3em} dn\_bnous[BONUSLEN];};
+
+  \draw [ultra thin] (dn_blkptr.north west) -- (dn_blkptr.north east);
+
+  \node (fixed) [draw=none, right=2cm of dn_compress,
+    text width=2.5cm, font=\rmfamily] {fixed length\\fields};
+  \node (variable) [draw=none, below right=0cm and 2cm of dn_blkptr.north east,
+    text width=2.5cm, font=\rmfamily] {variable length\\fields};
+  \node (title) [draw=none, above right=0 of dn_type.north west,
+    inner xsep=0pt, outer xsep=0pt, text=dnode_ru_color] {dnode\_phys\_t};
+  \draw [dnode_li_color] (dn_type.north west) -- (dn_type.north east) -- (dn_bonus.south east) -- (dn_bonus.south west) -- cycle;
+  \draw [densely dotted] ($(variable.north west)!1/4!(variable.south west)$) -- (dn_blkptr.north east);
+  \draw [densely dotted] ($(variable.north west)!4/5!(variable.south west)$) -- (dn_bonus.south east);
+  \draw [densely dotted] ($(fixed.north west)!1/4!(fixed.south west)$) -- (dn_type.north east);
+  \draw [densely dotted] ($(fixed.north west)!4/5!(fixed.south west)$) -- (dn_pad3.south east);
+\end{tikzpicture}

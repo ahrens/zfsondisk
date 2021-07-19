@@ -1,0 +1,285 @@
+\chapter{ZFS Posix Layer}\label{chap:zpl}
+
+The \emph{ZFS POSIX Layer}, or \emph{ZPL}
+makes DMU objects look like a POSIX filesystem.
+POSIX is a standard defining the set of services a filesystem must provide.
+ZFS filesystems provide all of these required services.
+
+The ZPL represents filesystems as an object set of type \lstinline{DMU_OST_ZFS}.
+All snapshots, clones and filesystems are implemented as an object set of this type.
+The ZPL uses a well defined format for organizing objects in its object set.
+The section below describes this layout.
+
+\section{ZPL Filesystem Layout}
+
+A ZPL object set has one object with a fixed location and fixed object number.
+This object is called the ``master node'' and
+always has an object number of 1.
+The master node is a ZAP object containing three attributes:
+\lstinline{DELETE_QUEUE}, \lstinline{VERSION}, and \lstinline{ROOT}.
+
+\setlength\LTleft{-.75cm}
+\setlength\LTright{-.75cm}
+\begin{LongTableMovable3Columns}{Name}{Value}{Description}
+    {ZPL Objects}{zpl_object}
+    {lp{4.5cm}p{8cm}}
+    {
+      DELECT\_QUEUE & 64 bit object number for the delete queue object
+      & The delete queue provides a list of deletes that were in-progress
+      when the filesystem was force unmounted
+      or as a result of a system failure such as a power outage.
+      Upon the next mount of the filesystem,
+      the delete queue is processed to remove the files/dirs that are inthe delete queue.
+      This mechanism is used to avoid leaking files and directories in the filesystem.\\
+      VERSION & Currently a value of ``1'' (\textcolor{red}{really???})
+      & ZPL version used to lay out this filesystem.\\
+      ROOT &  64bit object number
+      & This attribute's value contains
+      the object number for the top level directory in this filesystem,
+      the root directory.\\
+    }
+\end{LongTableMovable3Columns}
+\setlength\LTleft{0pt}
+\setlength\LTright{0pt}
+
+\section{Directories and Directory Traversal}
+
+Filesystem directories are implemented as ZAP objects
+(object type \lstinline{DMU_OT_DIRECTORY}).
+Each directory holds a set of name-value pairs
+which contain the names and object numbers for each directory entry.
+Traversing through a directory tree is as simple as
+looking up the value for an entry and reading that object number.
+
+All filesystem objects contain a \lstinline{znode_phys_t} structure
+in the bonus buffer of it's dnode.
+This structure stores the attributes for the filesystem object.
+The \lstinline{znode_phys_t} structure is shown below.
+
+\begin{lstlisting}[style=c]
+typedef struct znode_phys {
+        uint64_t zp_atime[2];
+        uint64_t zp_mtime[2];
+        uint64_t zp_ctime[2];
+        uint64_t zp_crtime[2];
+        uint64_t zp_gen;
+        uint64_t zp_mode;
+        uint64_t zp_size;
+        uint64_t zp_parent;
+        uint64_t zp_links;
+        uint64_t zp_xattr;
+        uint64_t zp_rdev;
+        uint64_t zp_flags;
+        uint64_t zp_uid;
+        uint64_t zp_gid;
+        uint64_t zp_zap;
+        uint64_t zp_pad[3];
+        fs_acl_phys_t zp_acl;
+} znode_phys_t;
+\end{lstlisting}
+
+\begin{description}[style=standard]
+\item[zp\_atime:]
+  Two 64 bit integers containing the last file access time in seconds
+  (\lstinline{zp_atime[0]}) and nanoseconds (\lstinline{zp_atime[1]}) since January 1st 1970 (GMT).
+
+\item[zp\_mtime:]
+  Two 64 bit integers containing the last file modification time in seconds
+  (\lstinline{zp_mtime[0]}) and nanoseconds (\lstinline{zp_mtime[0]}) since January 1st 1970 (GMT).
+
+\item[zp\_ctime:]
+  Two 64 bit integers containing the last file change time in seconds
+  (\lstinline{zp_ctime[0]}) and nanoseconds (\lstinline{zp_ctime[1]}) since January 1st 1970 (GMT).
+
+\item[zp\_crtime:]
+  Two 64 bit integers containing the file's creation time in seconds
+  (\lstinline{zp_crtime[0])} and nanoseconds (\lstinline{zp_crtime[1]}) since January 1st 1970 (GMT).
+
+\item[zp\_gen:]
+  64 bit generation number, contains the transaction group number of the creation of this file.
+
+\item[zp\_mode:]
+  64 bit integer containing file mode bits and file type.
+  The lower 8 bits of the mode contain the access mode bits, for example 755.
+  The 9th bit is the sticky bit and can be a value of zero or one.
+  Bits 13-16 are used to designate the file type.
+  The file types can be seen in the table below.
+
+  \begin{LongTable3Columns}{Type}{Description}{Value in bits 13-16}
+    {File types and their associated mode bits}{file_types}
+    {lp{4.5cm}p{8cm}}
+    {
+      S\_IFIFO & Fifo & 0x1\\
+      S\_IFCHR & Character Special Device & 0x2\\
+      S\_IFDIR & Directory & 0x4\\
+      S\_IFBLK & Block special device & 0x6\\
+      S\_IFREG & Regular file & 0x8\\
+      S\_IFLNK & Symbolic Link & 0xA\\
+      S\_IFSOCK & Socket & 0xC\\
+      S\_IFDOOR & Door & 0xD\\
+      S\_IFPORT & Event Port & 0xE\\
+    }
+  \end{LongTable3Columns}
+
+\item[zp\_size:]
+  size of file in bytes
+
+\item[zp\_parent:]
+  object id of the parent directory containing this file
+
+\item[zp\_links:]
+  number of hard links to this file
+
+\item[zp\_xattr:]
+  object ID of a ZAP object which is the hidden attribute directory.
+  It is treated like a normal directory in ZFS,
+  except that its hidden and an application will need to "tunnel"
+  into the file via \lstinline{openat()} to get to it.
+
+\item[zp\_rdev:]
+  \lstinline{dev_t} for files of type \lstinline{S_IFCHR} or \lstinline{S_IFBLK}
+
+\item[zp\_flags:]
+  Persistent flags set on the file.
+  The following are valid flag values.
+  \begin{table}[ht!]
+    \centering
+    \caption{zp\_flag values}\label{tbl:zp_flags}
+    \begin{tabular}{lr}
+      \toprule
+      \multicolumn{1}{c}{\textbf{Flag}} & \multicolumn{1}{c}{\textbf{Value}} \\
+      \midrule
+      ZFS\_XATTR & 0x1\\
+      ZFS\_INHERIT\_ACE & 0x2\\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+\item[zp\_uid:] 64 bit integer (\lstinline{uid_t}) of the files owner.
+\item[zp\_gid:] 64 bit integer (\lstinline{gid_t}) owning group of the file.
+\item[zp\_acl:] \lstinline{zfs_znode_acl} structure containing any ACL entries set on this file.
+  The \lstinline{zfs_acl_phys} structure is defined below.
+\end{description}
+
+\section{ZFS Access Control Lists}
+
+\emph{Access control lists} (\emph{ACL}) serve as a mechanism
+to allow or restrict user access privileges on a ZFS object.
+ACLs are implemented in ZFS as a table containing ACEs (Access Control Entries).
+
+The \lstinline{znode_phys_t} contains a \lstinline{zfs_acl_phys} structure.
+This structure is shown below.
+
+\begin{lstlisting}[style=c]
+#define ACE_SLOT_CNT 6
+
+typedef struct zfs_acl_phys_v0 {
+        uint64_t	z_acl_extern_obj;
+        uint32_t	z_acl_count;
+        uint16_t	z_acl_version;
+        uint16_t	z_acl_pad;
+        zfs_oldace_t	z_ace_data[ACE_SLOT_CNT];
+} zfs_acl_phys_v0_t;
+\end{lstlisting}
+
+\begin{description}[style=standard]
+\item[z\_acl\_extern\_obj:]
+  Used for holding ACLs that won't fit in the znode.
+  In other words, its for ACLs great than 6 ACEs.
+  The object type of an extern ACL is \lstinline{DMU_OT_ACL}.
+\item[z\_acl\_count:]
+  number of ACE entries that make up an ACL.
+\item[z\_acl\_version:]
+  reserved for future use.
+\item[z\_acl\_pad:] reserved for future use.
+\item[z\_ace\_data:] Array of up to 6 ACEs.
+\end{description}
+
+An ACE specifies an access right to an individual user or group for a specific object.
+
+\begin{lstlisting}[style=c]
+typedef struct zfs_oldace {
+        uint32_t	z_fuid;
+        uint32_t	z_access_mask;
+        uint16_t	z_flags;
+        uint16_t	z_type;
+} zfs_oldace_t;
+\end{lstlisting}
+
+\begin{description}[style=standard]
+\item[z\_fuid:]
+  This field is only meaningful when
+  the \lstinline{ACE_OWNER}, \lstinline{ACE_GROUP} and \lstinline{ACE_EVERYONE} flags
+  (set in \lstinline{z_flags}, described below)
+  are not asserted.
+  The \lstinline{z_fuid} field contains a UID or GID.
+  If the \lstinline{ACE_IDENTIFIER_GROUP} flag is set in \lstinline{z_flags} (see below),
+  the \lstinline{z_fuid} field will contain a GID.
+  Otherwise, this field will contain a UID.
+\item[a\_access\_mask]: 32 bit access mask.
+  The table below shows the access attribute associated with each bit.
+
+  \begin{LongTable2Columns}{Attribute}{Value}{Access Mask Values}{access_mask_values}{lr}
+    {
+      ACE\_READ\_DATA &0x00000001\\
+      ACE\_LIST\_DIRECTORY & 0x00000001\\
+      ACE\_WRITE\_DATA & 0x00000002\\
+      ACE\_ADD\_FILE & 0x00000002\\
+      ACE\_APPEND\_DATA & 0x00000004\\
+      ACE\_ADD\_SUBDIRECTORY & 0x00000004\\
+      ACE\_READ\_NAMED\_ATTRS & 0x00000008\\
+      ACE\_WRITE\_NAMED\_ATTRS & 0x00000010\\
+      ACE\_EXECUTE & 0x00000020\\
+      ACE\_DELETE\_CHILD & 0x00000040\\
+      ACE\_READ\_ATTRIBUTES & 0x00000080\\
+      ACE\_WRITE\_ATTRIBUTES & 0x00000100\\
+      ACE\_DELETE & 0x00010000\\
+      ACE\_READ\_ACL & 0x00020000\\
+      ACE\_WRITE\_ACL & 0x00040000\\
+      ACE\_WRITE\_OWNER &  0x00080000\\
+      ACE\_SYNCHRONIZE & 0x00100000\\
+    }
+  \end{LongTable2Columns}
+\item[z\_flags:]
+  16 bit integer whose value describes the ACL entry type and inheritance flags.
+
+  \begin{LongTable2Columns}{ACE flag}{Value}{Entry Type and Inheritance Flag Values}{ace_flags}{lr}
+    {
+      ACE\_FILE\_INHERIT\_ACE & 0x0001  \\
+      ACE\_DIRECTORY\_INHERIT\_ACE & 0x0002\\
+      ACE\_NO\_PROPAGATE\_INHERIT\_ACE & 0x0004\\
+      ACE\_INHERIT\_ONLY\_ACE & 0x0008\\
+      ACE\_SUCCESSFUL\_ACCESS\_ACE\_FLAG & 0x0010\\
+      ACE\_FAILED\_ACCESS\_ACE\_FLAG & 0x0020\\
+      ACE\_IDENTIFIER\_GROUP & 0x0040\\
+      ACE\_OWNER & 0x1000\\
+      ACE\_GROUP & 0x2000\\
+      ACE\_EVERYONE & 0x4000\\
+    }
+  \end{LongTable2Columns}
+
+\item[z\_type:]
+  The type of this ace. The following types are listed in the table below.
+
+  \begin{LongTable3Columns}{Type}{Value}{Description}
+    {ACE Types and Values}{ace_types}
+    {llp{7cm}}
+    {
+      \small{ACE\_ACCESS\_ALLOWED\_ACE\_TYPE} & 0x0000
+      & Grants access as described in \lstinline{z_access_mask}.\\
+      \small{ACE\_ACCESS\_DENIED\_ACE\_TYPE} & 0x0001
+      & Denies access as described in \lstinline{z_access_mask}.\\
+      \small{ACE\_SYSTEM\_AUDIT\_ACE\_TYPE} & 0x0002
+      & Audit the successful or failed accesses
+      (depending on the presence of the successful/failed
+      access flags) as defined in the
+      \lstinline{z_access_mask}.
+      \verbfootnote{The action taken as an effect of triggering an audit
+        is currently undefined in Solaris.}\\
+      \small{ACE\_SYSTEM\_ALARM\_ACE\_TYPE} & 0x0003
+      & Alarm the successful of failed accesses as defined in the \lstinline{z_access_mask}
+      \verbfootnote{The action taken as an effect of triggering an alarm
+        is currently undefined in Solaris.}
+    }
+  \end{LongTable3Columns}
+\end{description}

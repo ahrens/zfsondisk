@@ -1,0 +1,29 @@
+\documentclass[
+  10pt, letterpaper,
+  twoside,
+  % showtrims % remove me later!!!
+]{memoir}
+
+\providecommand{\fontpath}{./Fonts}
+
+\input{zfs_ondisk_preamble.tex}
+
+\begin{document}
+\pagestyle{empty}
+\input{zfs_ondisk_cover.tex}
+\clearpage
+
+\tableofcontents*
+\clearpage
+
+\include{zfs_ondisk_intro.tex}
+\include{zfs_ondisk_vdev.tex}
+\include{zfs_ondisk_blkptr.tex}
+\include{zfs_ondisk_dmu.tex}
+\include{zfs_ondisk_dsl.tex}
+\include{zfs_ondisk_zap.tex}
+\include{zfs_ondisk_zpl.tex}
+\include{zfs_ondisk_zil.tex}
+\include{zfs_ondisk_zvol.tex}
+
+\end{document}

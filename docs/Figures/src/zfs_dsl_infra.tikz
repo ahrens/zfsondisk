@@ -1,0 +1,100 @@
+\begin{tikzpicture}[
+  >= Latex,
+  every node/.style = {
+    draw, align=center,
+    font=\sffamily
+    % inner sep=0pt, outer sep=0pt
+  }
+]
+  \node (dsl_dir) [%
+    fill=sunpurple,
+    minimum width=3cm, minimum height=2.5cm,
+    text width=2.5cm
+  ] {DSL\\Directory};
+  \node (dsl_prop) [%
+    fill=gray!65,
+    minimum width=3cm, minimum height=2cm,
+    text width=2.5cm,
+    right=1cm of dsl_dir
+  ] {DSL\\Properties\\ZAP Objects};
+  \node (dsl_child_ds) [%
+    fill=gray!65,
+    minimum width=3cm, minimum height=2cm,
+    text width=2.5cm,
+    left=1cm of dsl_dir
+  ] {DSL\\Child Dataset\\ZAP Objects};
+  \node (dsl_ds_active) [%
+    fill=gray!5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2.5cm,
+    below=1cm of dsl_dir
+  ] {DSL\\Dataset\\(active)};
+  \node (dsl_ds_snapshot1) [%
+    fill=gray!5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2cm,
+    right=1cm of dsl_ds_active
+  ] {DSL\\Dataset\\(snapshot)};
+  \node (dsl_ds_snapshot2) [%
+    fill=gray!5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2cm,
+    right=1cm of dsl_ds_snapshot1
+  ] {DSL\\Dataset\\(snapshot)};
+  \node (dmu_os_active) [%
+    fill=gray!62.5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2cm,
+    below=2cm of dsl_ds_active
+  ] {DMU\\Object Set\\(active)};
+  \node (dmu_os_snapshot1) [%
+    fill=gray!62.5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2cm,
+    below=2cm of dsl_ds_snapshot1
+  ] {DMU\\Object Set\\(snapshot)};
+  \node (dmu_os_snapshot2) [%
+    fill=gray!62.5,
+    minimum width=3cm, minimum height=2cm,
+    text width=2cm,
+    below=2cm of dsl_ds_snapshot2
+  ] {DMU\\Object Set\\(snapshot)};
+  \node (dsl_child_dir1) [%
+    fill=sunpurple,
+    minimum width=2cm, minimum height=1.5cm,
+    text width=2cm,
+    below=1cm of dsl_child_ds
+  ] {DSL\\Directory\\(child1)};
+  \node (dsl_child_dir2) [%
+    fill=sunpurple,
+    minimum width=2cm, minimum height=1.5cm,
+    text width=2cm,
+    below=1.2cm of dsl_child_ds, xshift=-1.5cm
+  ] {DSL\\Directory\\(child2)};
+
+  \node (frame1) [densely dashed, fit=(dsl_child_ds)(dsl_child_dir1)(dsl_child_dir2),
+    inner xsep=10pt, inner ysep=21pt, yshift=7pt, align=left,
+    label={[anchor=north east]:Child Dataset\\Information}] {};
+  \node (frame2) [densely dashed,
+    fit=(dsl_ds_snapshot1)(dsl_ds_snapshot2)(dmu_os_snapshot1)(dmu_os_snapshot2),
+    inner sep=10pt]{Snapshots};
+  
+  \draw [->] (dsl_dir.west) -- (dsl_child_ds);
+  \draw [->] (dsl_dir.east) -- (dsl_prop);
+  \draw [->] (dsl_dir.south) -- (dsl_ds_active);
+  \draw [->] (dsl_ds_active.east) -- (dsl_ds_snapshot1.west);
+  \draw [->] (dsl_ds_snapshot1.east) -- (dsl_ds_snapshot2.west);
+  \draw [->] (dsl_ds_active.south) -- (dmu_os_active.north);
+  \draw [->] (dsl_ds_snapshot1.south) -- (dmu_os_snapshot1.north);
+  \draw [->] (dsl_ds_snapshot2.south) -- (dmu_os_snapshot2.north);
+  \draw [->] ($(dsl_child_ds.south east)!1/4!(dsl_child_ds.south west)$)
+    coordinate (tmp) -- (tmp |- dsl_child_dir1.north);
+  \draw [->] ($(dsl_child_ds.south west)!1/4!(dsl_child_ds.south east)$)
+    coordinate (tmp) -- (tmp |- dsl_child_dir2.north);
+
+  \draw [ultra thick] ($(frame1.south west)-(.5cm,1.25cm)$) -- ++(18cm,0);
+  \draw ($(frame1.north east)+(12.5cm,0cm)$) coordinate (a) -- ++(1cm,0) coordinate (b);
+  \draw ($(a)-(0cm,9cm)$) coordinate (c) -- ++(1cm,0) coordinate (d);
+  \draw [<->] ($(a)!1/3!(b)$) --
+  node [draw=none, xshift=-.25cm, rotate=90, font=\rmfamily\bfseries] {DSL Infrastructure} ($(c)!1/3!(d)$);
+\end{tikzpicture}

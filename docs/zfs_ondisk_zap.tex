@@ -1,0 +1,435 @@
+\chapter{ZFS Attribute Processor}\label{chap:zap}
+
+The \emph{ZFS Attribute Processor}, or \emph{ZAP} is a module
+which sits on top of the DMU and operates on objects called ZAP objects.
+A ZAP object is a DMU object used to store attributes in the form of name-value pairs.
+The name portion of the attribute is a zero-terminated string of up to 256 bytes
+(including terminating NULL).
+The value portion of the attribute is an array of integers
+whose size is only limited by the size of a ZAP data block.
+
+ZAP objects are used to store properties for a dataset,
+navigate filesystem objects, store pool properties and more.
+The following table contains a list of ZAP object types.
+
+\begin{table}[ht]
+  \centering
+  \caption{ZAP Object Types}\label{tbl:zap_obj_types}
+  \begin{tabular}{l}
+    \toprule
+    \multicolumn{1}{c}{\textbf{ZAP Object Type}}\\
+    \midrule
+    \lstinline!DMU_OT_OBJECT_DIRECTORY!\\
+    \lstinline!DMU_OT_DSL_DIR_CHILD_MAP!\\
+    \lstinline!DMU_OT_DSL_DS_SNAP_MAP!\\
+    \lstinline!DMU_OT_DSL_PROPS!\\
+    \lstinline!DMU_OT_DIRECTORY_CONTENTS!\\
+    \lstinline!DMU_OT_MASTER_NODE!\\
+    \lstinline!DMU_OT_DELETE_QUEUE!\\
+    \lstinline!DMU_OT_ZVOL_PROP!\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+ZAP objects come in two forms; \emph{microzap} objects and \emph{fatzap} objects.
+Microzap objects are a lightweight version of the fatzap
+and provide a simple and fast lookup mechanism for a small number of attribute entries.
+The fatzap is better suited for ZAP objects containing large numbers of attributes.
+
+The following guidelines are used by ZFS to decide
+whether or not to use a fatzap or a microzap object.
+\begin{center}
+\begin{minipage}[c]{.8\textwidth}
+  A microzap object is used if all three conditions below are met:
+  \begin{itemize}
+  \item all name-value pair entries fit into one block.
+    The maximum data block size in ZFS is 128KB and
+    this size block can fit up to 2047 microzap entries.
+  \item The value portion of all attributes are of type \lstinline{uint64_t}.
+  \item The name portion of each attribute is less than or equal to 50 characters in length
+    (including NULL terminating character).
+  \end{itemize}
+  If any of the above conditions are not met, a fatzap object is used.
+\end{minipage}
+\end{center}
+
+The first 64 bit word in each block of a ZAP object
+is used to identify the type of ZAP contents contained within this block.
+The table below shows these values.
+
+\begin{table}[ht]
+  \centering
+  \caption{ZAP Object Block Types}\label{tbl:zap_obj_block_types}
+  \begin{tabular}{lp{5cm}l}
+    \toprule
+    \multicolumn{1}{c}{\textbf{Identifier}} &
+    \multicolumn{1}{c}{\textbf{Description}} &
+    \multicolumn{1}{c}{\textbf{Value}}\\
+    \midrule
+    ZBT\_MICRO & This block contains microzap entries &(1ULL << 63) + 3\\
+    ZBT\_HEADER & This block is used for the fatzap.
+    This identifier is only used for the first block in a fatzap object.
+    & (1ULL << 63) + 1\\
+    ZBT\_LEAF & This block is used for the fatzap.
+    This identifier is used for all blocks in the fatzap with the exception of the first.
+    & (1ULL << 63) + 0\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{The Micro Zap}
+
+The microzap implements a simple mechanism for storing a small number of attributes.
+A microzap object consists of a single block
+containing an array of microzap entries (\lstinline{mzap_ent_phys_t} structures).
+Each attribute stored in a microzap object is represented
+by one of these microzap entry structures.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=1]{Figures/zfs_mzap.pdf}
+  \caption{Microzap Block Layout}
+  \label{fig:mzap}
+\end{figure}
+
+A microzap block is laid out as follows:
+the first 128 bytes of the block contain
+a microzap header structure called the \lstinline{mzap_phys_t}.
+This structure contains a 64 bit \lstinline{ZBT_MICRO} value
+indicating that this block is used to store microzap entries.
+Following this value is a 64 bit salt value
+that is stirred into the hash so that the hash function is different for each ZAP object.
+The next 42 bytes of this header is intentionally left blank
+and the last 64 bytes contain the first microzap entry
+(a structure of type \lstinline{mzap_ent_phys_t}).
+The remaining bytes in this block are used to
+store an array of \lstinline{mzap_ent_phys_t} structures.
+The Illustration~\ref{fig:mzap} above shows the layout of this block.
+
+The \lstinline{mzap_ent_phys_t} structure and associated \#defines are shown below.
+
+\begin{lstlisting}[style=c]
+#define MZAP_ENT_LEN            64
+#define MZAP_NAME_LEN           (MZAP_ENT_LEN - 8 – 4 - 2)
+typedef struct mzap_ent_phys {
+        uint64_t mze_value;
+        uint32_t mze_cd;
+        uint16_t  mze_pad;
+        char mze_name[MZAP_NAME_LEN];
+} mzap_ent_phys_t;
+\end{lstlisting}
+
+\begin{flushright}
+  \begin{minipage}[c]{.92\textwidth}
+    \begin{description}[style=standard]
+    \item[mze\_value:]  64 bit integer
+    \item[mze\_cd:]
+      32 bit collision differentiator (``CD''):
+      associated with an entry whose hash value is the same as another entry within this ZAP object.
+      When an entry is inserted into the ZAP object,
+      the lowest CD which is not already used by an entry with the same hash value is assigned.
+      In the absence of hash collisions,
+      the CD value will be zero.
+    \item[mze\_pad:]
+      reserved for future use
+    \item[mze\_name:]
+      NULL terminated string less than or equal to 50 characters in length
+    \end{description}
+  \end{minipage}
+\end{flushright}
+
+\section{The Fat Zap}
+
+The fatzap implements a flexible architecture for storing large numbers of attributes,
+and/or attributes with long names or complex values (not \lstinline{uint64_t}).
+This section begins with an explanation of the basic structure of a fatzap object
+and is followed by a detailed explanation of each component of a fatzap object.
+
+All entries in a fatzap object are arranged based on a 64 bit hash of the attribute's name.
+The hash is used to index into a pointer table
+(as can be seen on the left side of the illustration below).
+The number of bits used to index into this table
+(sometimes called the prefix)
+is dependent on the number of entries in the table.
+The number of entries in the table can change over time.
+As policy stands today,
+the pointer table will grow if
+the number of entries hashing to a particular bucket exceeds
+the capacity of one leaf block
+(explained in detail below).
+The pointer table entries reference a chain of fatzap blocks
+called leaf blocks,
+represented by the \lstinline{zap_leaf_phys} structure.
+Each leaf block is broken up into some number of chunks
+(zap\_leaf\_chunks)
+and each attribute is stored in one or more of these leaf chunks.
+The illustration below shows the basic fatzap structures,
+each component is explained in detail in the following sections.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\textwidth]{Figures/zfs_fzap_overview.pdf}
+  \caption{Fatzap Structure Overview}
+  \label{fig:fzap_overview}
+\end{figure}
+
+\subsection{zap\_phys\_t}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=1]{Figures/zfs_zap_phys.pdf}
+  \caption{zap\_phys\_t Structure}
+  \label{fig:zap_phys_t}
+\end{figure}
+
+The first block of a fatzap object contains a 128KB \lstinline{zap_phys_t} structure.
+Depending on the size of the pointer table,
+this structure may contain the pointer table.
+If the pointer table is too large to fit in the space provided by the \lstinline{zap_phys_t},
+some information about where it can be found
+is stored in the \lstinline{zap_table_phys} portion of this structure.
+The definitions of the \lstinline{zap_phys_t} contents are as follows:
+
+\begin{description}
+
+\item[zap\_block\_type:]
+64 bit integer identifying type of ZAP block. Always set to ZBT\_HEADER (see Table 14) for the first block in the fatzap.
+
+\item[zap\_magic:]
+  64 bit integer containing the ZAP magic number \lstinline{0x2F52AB2AB} (zfs-zap-zap)
+
+\item[zap\_table\_phys:]
+  structure whose contents are used to describe the pointer table
+
+  \begin{description}
+  \item[zt\_blk:]
+    Blkid for the first block of the pointer table.
+    This field is only used when the pointer table is external to the \lstinline{zap_phys_t} structure;
+    zero otherwise.
+
+  \item[zt\_numblks:]
+    Number of blocks used to hold the pointer table.
+    This field is only used when the pointer table is external to
+    the \lstinline{zap_phys_t} structure; zero otherwise.
+
+  \item[zt\_shift:]
+    Number of bits used from the hash value to index into the pointer table.
+    If the pointer table is contained within the \lstinline{zap_phys_t},
+    this value will be 13.
+
+  \item[uint64\_t zt\_nextblk: uint64\_t zt\_blks\_copied:]
+    The above two fields are used when the pointer table changes sizes.
+  \end{description}
+
+\item[zap\_freeblk:]
+  64 bit integer containing the first available ZAP block that can be used to allocate a new zap\_leaf.
+
+\item[zap\_num\_leafs:]
+  Number of zap\_leaf\_phys\_t structures (described below) contained within this ZAP object.
+
+\item[zap\_salt:]
+  The salt value is a 64 bit integer that is stirred into the hash function,
+  so that the hash function is different for each ZAP object.
+
+\item[zap\_num\_entries:]
+  Number of attributes stored in this ZAP object.
+
+\item[zap\_leafs{[8192]}:]
+  The zap\_leaf array contains 213 (8192) slots.
+  If the pointer table has fewer than 213 entries,
+  the pointer table will be stored here.
+  If not, this field is unused.
+\end{description}
+
+\subsection{Pointer Table}
+
+The pointer table is a hash table which uses a chaining method to handle collisions.
+Each hash bucket contains a 64 bit integer which describes
+the level zero block id
+(see Chapter~\ref{chap:dmu} for a description of block ids)
+of the first element in the chain of entries hashed here.
+An entries hash bucket is determined by
+using the first few bits of the 64 bit ZAP entry hash
+computed from the attribute's name.
+The value used to index into the pointer table is called
+the \emph{prefix} and is the \lstinline{zt_shift} high order bits of the 64 bit computed hash.
+
+\subsection{zap\_leaf\_phys\_t}
+
+The \lstinline{zap_leaf_phys_t} is the structure
+referenced by the pointer table.
+Collisions in the pointer table result in \lstinline{zap_leaf_phys_t} structures
+being strung together in a link list fashion.
+The \lstinline{zap_leaf_phys_t} structure contains
+a header, a hash table, and some number of chunks.
+
+\begin{lstlisting}[style=c]
+typedef struct zap_leaf_phys {
+        struct zap_leaf_header {
+                uint64_t lh_block_type;
+                uint64_t lh_pad1;
+                uint64_t lh_prefix;
+                uint32_t lh_magic;
+                uint16_t lh_nfree;
+                uint16_t lh_nentries;
+                uint16_t lh_prefix_len;
+                uint16_t lh_freelist;
+                uint8_t lh_flags;
+                uint8_t lh_pad2[11];
+        } l_hdr;
+        /*
+         * The header is followed by a hash table with
+         * ZAP_LEAF_HASH_NUMENTRIES(zap) entries.
+         */
+        uint16_t l_hash[1];
+        /*
+         * The hash table is followed by an array of
+         * ZAP_LEAF_NUMCHUNKS(zap) zap_leaf_chunk structures.
+         * These structures are accessed with the
+         * ZAP_LEAF_CHUNK() macro.
+         */
+        union zap_leaf_chunk {
+                struct zap_leaf_entry {
+                        uint8_t le_type;
+                        uint8_t le_value_intlen;
+                        uint16_t le_next;
+                        uint16_t le_name_chunk;
+                        uint16_t le_name_numints;
+                        uint16_t le_value_chunk;
+                        uint16_t le_value_numints;
+                        uint32_t le_cd;
+                        uint64_t le_hash;
+                } l_entry;
+                struct zap_leaf_array {
+                        uint8_t la_type;
+                        uint8_t la_array[ZAP_LEAF_ARRAY_BYTES];
+                        uint16_t la_next;
+                } l_array;
+                struct zap_leaf_free {
+                        uint8_t lf_type;
+                        uint8_t lf_pad[ZAP_LEAF_ARRAY_BYTES];
+                        uint16_t lf_next;
+                } l_free;
+        } l_chunk[ZAP_LEAF_NUMCHUNKS];
+} zap_leaf_phys_t;
+\end{lstlisting}
+
+\subsubsection{Header}
+The header for the ZAP leaf is stored in a \lstinline{zap_leaf_header} structure.
+It's description is as follows:
+\begin{description}
+
+\item[lhr\_block\_type:]
+  always \lstinline{ZBT_LEAF}
+  (see Table~\ref{tbl:zap_obj_block_types} for values)
+\item[lhr\_next:]
+  64 bit integer block id for the next leaf in a block chain.
+\item[lhr\_prefix \normalfont{and} lhr\_prefix\_len:]
+  Each leaf (or chain of leafs) stores the ZAP entries
+  whose first \lstinline{lhr_prefixlen} bits of their hash value equals \lstinline{lhr_prefix}.
+  \lstinline{lhr_prefixlen} can be equal to or less than \lstinline{zt_shift}
+  (the number of bits used to index into the pointer table)
+  in which case multiple pointer table buckets reference the same leaf.
+\item[lhr\_magic:]
+  leaf magic number == \lstinline{0x2AB1EAF} (zap-leaf)
+\item[lhr\_nfree:]
+  number of free chunks in this leaf (chunks described below)
+\item[lhr\_nentries:]
+  number of ZAP entries stored in this leaf
+\item[lhr\_freelist:]
+  head of a list of free chunks,
+  16 bit integer used to index into the \lstinline{zap_leaf_chunk} array
+
+\end{description}
+
+\subsubsection{Leaf Hash}
+The next 8KB of the \lstinline{zap_leaf_phys_t} is the zap leaf hash table.
+The entries in the has table reference chunks of type \lstinline{zap_leaf_entry}.
+Twelve bits (the twelve following the \lstinline{lhr_prefix_len}
+used to uniquely identify this block)
+of the attribute's hash value are used to index into the this table.
+Hash table collisions are handled by chaining entries.
+Each bucket in the table contains a 16 bit integer
+which is the index into the \lstinline{zap_leaf_chunk} array.
+
+\subsection{zap\_leaf\_chunk}
+
+Each leaf contains an array of chunks.
+There are three types of chunks:
+\lstinline{zap_leaf_entry}, \lstinline{zap_leaf_array}, and \lstinline{zap_leaf_free}.
+Each attribute is represented by some number of these chunks:
+one \lstinline{zap_leaf_entry} and some number of \lstinline{zap_leaf_array} chunks.
+The illustration below shows
+how these chunks are arranged.
+A detailed description of each chunk type follows the illustration.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\textwidth]{Figures/zfs_zap_leaf.pdf}
+  \caption{Zap Leaf Structure}
+  \label{fig:zap_leaf}
+\end{figure}
+
+\begin{description}
+\item[zap\_leaf\_entry:]
+  The leaf hash table (described above) points to chucks of this type.
+  This entry contains pointers to chunks of type \lstinline{zap_leaf_array}
+  which hold the name and value for the attributes being stored here.
+  \begin{description}
+  \item[le\_type:]
+    \lstinline{ZAP_LEAF_ENTRY} == 252
+  \item[le\_int\_size:]
+    Size of integers in bytes for this entry.
+  \item[le\_next:]
+    Next entry in the \lstinline{zap_leaf_chunk} chain.
+    Chains occur when there are collisions in the hash table.
+    The end of the chain is designated by a \lstinline{le_next} value of \lstinline{0xffff}.
+  \item[le\_name\_chunk:] 16 bit integer identifying the chunk of type \lstinline{zap_leaf_array}
+    which contains the first 21 characters of this attribute's name.
+  \item[le\_name\_length:]
+    The length of the attribute's name, including the NULL character.
+  \item[le\_value\_chunk:]
+    16 bit integer identifying the first chunk
+    (type \lstinline{zap_leaf_array}) containing the first 21 bytes of the attribute's value.
+  \item[le\_value\_length:]
+    The length, in integer increments (\lstinline{le_int_size})
+  \item[le\_cd:]
+    The collision differentiator (``CD'') is a value
+    associated with an entry
+    whose hash value is the same as another entry within this ZAP object.
+    When an entry is inserted into the ZAP object,
+    the lowest CD which is not already used by an entry with the same hash value is assigned.
+    In the absence of hash collisions, the CD value will be zero.
+  \item[le\_hash:]
+    64 bit hash of this attribute's name.
+  \end{description}
+
+\item[zap\_leaf\_array:]
+  Chunks of the \lstinline{zap_leaf_array} hold
+  either the name or the value of the ZAP attribute.
+  These chunks can be strung together to provide for long names or large values.
+  \lstinline{zap_leaf_array} chunks are pointed to by a \lstinline{zap_leaf_entry} chunk.
+
+  \begin{description}
+  \item[la\_type:]
+    \lstinline{ZAP_LEAF_ARRAY} == 251
+  \item[la\_array:]
+    21 byte array containing the name or value's value.
+    Values of type ``integer'' are always stored in bigendian format,
+    regardless of the machine's native endianness.
+  \item[la\_next:]
+    16 bit integer used to index into the \lstinline{zap_leaf_chunk} array
+    and references the next \lstinline{zap_leaf_array} chunk for this attribute;
+    a value of \lstinline{0xffff} (\lstinline{CHAIN_END}) is used to designate the end of the chain
+  \end{description}
+
+\item[zap\_leaf\_free:]
+  Unused chunks are kept in a chained free list.
+  The root of the free list is stored in the leaf header.
+  \begin{description}
+  \item[lf\_type:]
+    \lstinline{ZAP_LEAF_FREE} == 253
+  \item[lf\_next:]
+    16 bit integer pointing to the next free chunk.
+  \end{description}
+\end{description}

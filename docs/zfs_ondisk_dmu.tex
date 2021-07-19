@@ -1,0 +1,320 @@
+\chapter{Data Management Unit}\label{chap:dmu}
+
+The \emph{Data Management Unit} (\emph{DMU})
+consumes blocks and groups them into logical units called objects.
+Objects can be further grouped by the DMU into object sets.
+Both objects and object sets are described in this chapter.
+
+\section{Objects}
+
+With the exception of a small amount of infrastructure,
+described in Chapters~\ref{chap:vdev} and \ref{chap:blkptr},
+everything in ZFS is an object. The following table lists existing ZFS object types;
+many of these types are described in greater detail in future chapters of this document.
+
+\begin{LongTable2Columns}{Type}{Description}{Object Types}{obj_types_details}{lp{8.85cm}}
+  {
+    \small{DMU\_OT\_NONE}
+    & Unallocated object\\
+    \small{DMU\_OT\_OBJECT\_DIRECTORY}
+    & DSL object directory ZAP object\\
+    \small{DMU\_OT\_OBJECT\_ARRAY}
+    & Object used to store an array of object numbers.    \\
+    \small{DMU\_OT\_PACKED\_NVLIST}
+    & Packed nvlist object.\\
+    \small{DMU\_OT\_SPACE\_MAP}
+    & SPA disk block usage list.\\
+    \small{DMU\_OT\_INTENT\_LOG}
+    & Intent Log\\
+    \small{DMU\_OT\_DNODE}
+    & Object of dnodes (metadnode)\\
+    \small{DMU\_OT\_OBJSET}
+    & Collection of objects.\\
+    \small{DMU\_OT\_DSL\_DATASET\_CHILD\_MAP}
+    & DSL ZAP object containing child DSL directory information.\\
+    \small{DMU\_OT\_DSL\_OBJSET\_SNAP\_MAP}
+    & DSL ZAP object containing snapshot information for a dataset.\\
+    \small{DMU\_OT\_DSL\_PROPS}
+    & DSL ZAP properties object containing properties for a DSL dir object.\\
+    \small{DMU\_OT\_BPLIST}
+    & Block pointer list – used to store the “deadlist”:
+    list of block pointers deleted since the last snapshot,
+    and the “deferred free list” used for sync to convergence.\\
+    \small{DMU\_OT\_BPLIST\_HDR}
+    & BPLIST header: stores the \lstinline{bplist_phys_t} structure.\\
+    \small{DMU\_OT\_ACL}
+    & ACL (Access Control List) object\\
+    \small{DMU\_OT\_PLAIN\_FILE}
+    & ZPL Plain file\\
+    \small{DMU\_OT\_DIRECTORY\_CONTENTS}
+    & ZPL Directory ZAP Object\\
+    \small{DMU\_OT\_MASTER\_NODE}
+    & ZPL Master Node ZAP object:
+    head object used to identify root directory,
+    delete queue, and version for a filesystem.\\
+    \small{DMU\_OT\_DELETE\_QUEUE}
+    & The delete queue provides a list of deletes
+    that were in-progress when the filesystem
+    was force unmounted or as a result of a system failure
+    such as a power outage.
+    Upon the next mount of the filesystem,
+    the delete queue is processed to remove the files/dirs
+    that are in the delete queue.
+    This mechanism is used to avoid
+    leaking files and directories in the filesystem.\\
+    \small{DMU\_OT\_ZVOL}
+    & ZFS volume (ZVOL)\\
+    \small{DMU\_OT\_ZVOL\_PROP}
+    & ZVOL properties\\
+  }
+\end{LongTable2Columns}
+
+Objects are defined by 512 bytes structures called dnodes.
+\verbfootnote{A dnode is similar to an \emph{inode} in UFS.}
+A dnode describes and organizes a collection of blocks making up an object.
+The dnode (\lstinline{dnode_phys_t} structure),
+seen in the illustration below,
+contains several fixed length fields and two variable length fields.
+Each of these fields are described in detail below.
+
+\begin{figure}[ht]
+ \centering
+ \hspace*{2cm}\includegraphics[scale=1]{Figures/zfs_dnode_phys.pdf}
+ \caption{\lstinline{dnode_phys_t} structure}
+ \label{fig:zfs_dnode_phys}
+\end{figure}
+
+\begin{description}
+  \item[dn\_type]
+    An 8-bit numeric value indicating an object's type.
+    See Table~\ref{tbl:obj_types}
+    for a list of valid object types and their associated 8 bit identifiers.
+  \item[dn\_indblkshift {\normalfont and} dn\_datablkszsec]
+    ZFS supports variable data and indirect
+    (see \lstinline{dn_nlevels} below for a description of indirect blocks)
+    block sizes ranging from 512 bytes to 128 Kbytes.
+    \begin{description}
+      \item[dn\_indblkshift]
+        8-bit numeric value containing the log (base 2) of the size (in bytes)
+        of an indirect block for this object.
+      \item[dn\_datablkszsec]
+        16-bit numeric value containing the data block size (in bytes)
+        divided by 512 (size of a disk sector).
+        This value can range between 1 (for a 512 byte block) and 256
+        (for a 128 Kbyte block).
+    \end{description}
+  \item[dn\_nblkptr {\normalfont and} dn\_blkptr]
+    dn\_blkptr is a variable length field that can contains between one and three block pointers.
+    The number of block pointers that
+    the dnode contains is set at object allocation time
+    and remains constant throughout the life of the dnode.
+    \begin{description}
+      \item[dn\_nblkptr]
+        8-bit numeric value containing the number of block pointers in this dnode.
+      \item[dn\_blkptr]
+        block pointer array containing dn\_nblkptr block pointers
+    \end{description}
+  \item[dn\_nlevels]
+    dn\_nlevels is an 8-bit numeric value containing
+    the number of levels
+    that make up this object.
+    These levels are often referred to as levels of indirection.
+
+    \textbf{Indirection}\\
+    A dnode has a limited number (\lstinline{dn_nblkptr}, see above) of block pointers
+    to describe an object's data.
+    For a dnode using the largest data block size (128KB)
+    and containing the maximum number of block pointers (3),
+    the largest object size it can represent (without indirection) is
+    384 KB($3 \times 128$KB = 384KB).
+    To allow for larger objects, indirect blocks are used.
+    An indirect block is a block containing block pointers.
+    The number of block pointers that
+    an indirect block can hold is dependent on the indirect block size
+    (represented by \lstinline{dn_indblkshift})
+    and can be calculated by dividing the indirect block size by the size of a blkptr (128 bytes).
+    The largest indirect block (128KB) can hold up to 1024 block pointers.
+    As an object's size increases,
+    more indirect blocks and levels of indirection are created.
+    A new level of indirection is created once
+    an object grows so large that it exceeds the capacity of the current level.
+    ZFS provides up to six levels of indirection to support files up to $2^{64}$ bytes long.
+
+    The illustration below shows an object with 3 levels of blocks (level 0, level 1, and level 2).
+    This object has triple wide block pointers
+    (dva1, dva2, and dva3) for metadata
+    and single wide block pointers for its data
+    (see Chapter~\ref{chap:blkptr} for a description of block pointer wideness).
+    The blocks at level 0 are data blocks.
+    \begin{figure}[ht]
+      \centering
+      \includegraphics[width=\textwidth]{Figures/zfs_3levels.pdf}
+      \caption{Object with 3 levels. Triple wide block pointers used for metadata; single wide block pointers used for data}
+      \label{fig:blkptr_three_levels}
+    \end{figure}
+  \item[dn\_maxblkid]
+    An object's blocks are identified by block ids.
+    The blocks in each level of indirection are numbered from 0 to N,
+    where the first block at a given level is given an id of 0,
+    the second an id of 1, and so forth.
+
+    The dn\_maxblkid field in the dnode is set to
+    the value of the largest data (level zero) block id for this object.
+
+    \begin{center}
+    \begin{minipage}[c]{.8\textwidth}
+      Note on Block Ids:
+      Given a block id and level,
+      ZFS can determine the exact branch of indirect blocks which contain the block.
+      This calculation is done using the block id, block level,
+      and number of block pointers in an indirect block.
+      For example,
+      take an object which has 128KB sized indirect blocks.
+      An indirect block of this size can hold 1024 block pointers.
+      Given a level 0 block id of 16360,
+      it can be determined that block 15 (block id 15) of level 1 contains
+      the block pointer for level 0 blkid 16360.
+      \[
+      level\ 1\ blkid = 16360 \% 1024 = 15
+      \]
+      This calculation can be performed recursively up
+      the tree of indirect blocks
+      until the top level of indirection has been reached.
+    \end{minipage}
+    \end{center}
+  \item[dn\_secphys]
+    The sum of all asize values for all block pointers (data and indirect) for this object.
+
+  \item[dn\_bonus, dn\_bonuslen, {\normalfont and} dn\_bonustype]
+    The bonus buffer (dn\_bonus) is defined as
+    the space following a dnode's block pointer array (dn\_blkptr).
+    The amount of space is dependent on object type and can range between 64 and 320 bytes.
+    \begin{description}
+    \item[dn\_bonus\_len]
+      Length (in bytes) of the bonus buffer
+    \item[dn\_bonus]
+      \lstinline{dn_bonuslen} sized chunk of data.
+      The format of this data is defined by \lstinline{dn_bonustype}.
+    \item[dn\_bonustype]
+      8-bit numeric value identifying
+      the type of data contained within the bonus buffer.
+      Table~\ref{tbl:bonus_types} below shows valid bonus buffer types
+      and the structures which are stored in the bonus buffer.
+      The contents of each of these structures will be discussed later in this specification.
+      \setlength\LTleft{-1.25cm}
+      \setlength\LTright{-1.25cm}
+      \begin{LongTable4Columns}{Bonus Type}{Description}{{Metadata Structure}}{Value}
+        {Bonus Buffer Types and associated structures}{bonus_types}
+        {lp{7.25cm}p{3cm}r}
+        {
+          \small{DMU\_OT\_PACKED\_NVLIST\_SIZE}
+          & Bonus buffer type containing size in bytes of a \small{DMU\_OT\_PACKED\_NVLIST} object
+          & uint64\_t & 4\\
+
+          \small{DMU\_OT\_SPACE\_MAP\_HEADER}
+          & Spa space map header
+          & space\_map\_obj\_t & 7\\
+
+          \small{DMU\_OT\_DSL\_DIR}
+          & DSL Directory  object used to define relationships and
+          properties between related  datasets
+          & dsl\_dir\_phys\_t & 12\\
+
+          \small{DMU\_OT\_DSL\_DATASET}
+          & DSL dataset object used to organize snapshot and usage static information for
+          objects of type  \small{DMU\_OT\_OBJSET}.
+          & dsl\_dataset\_phys\_t & 16\\
+
+          \small{DMU\_OT\_ZNODE}
+          & ZPL metadata
+          & znode\_phys\_t & 17\\
+        }
+      \end{LongTable4Columns}
+      \setlength\LTleft{0pt}
+      \setlength\LTright{0pt}
+    \end{description}
+\end{description}
+
+\section{Object Sets}
+
+The DMU organizes objects into groups called object sets.
+Object sets are used in ZFS to group related objects,
+such as objects in a filesystem, snapshot, clone, or volume.
+
+Object sets are represented by a 1K byte \lstinline{objset_phys_t} structure.
+Each member of this structure is defined in detail below.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=1]{Figures/zfs_objset_phys.pdf}
+  \caption{\lstinline{objset_phys_t} structure}
+  \label{fig:objset_phys_t}
+\end{figure}
+
+\begin{description}
+\item[os\_type]
+  The DMU supports several types of object sets,
+  where each object set type has it's own well defined format/layout for its objects.
+  The object set's type is identified by a 64 bit integer, \lstinline{os_type}.
+  The table below lists available DMU object set types
+  and their associated \lstinline{os_type} integer value.
+
+  \begin{LongTable3Columns}{Object Set Type}{Description}{Value}
+    {DMU Object Set Types}{objset_types}
+    {lp{6.5cm}r}
+    {
+      DMU\_OST\_NONE & Uninitialized Object Set       & 0\\
+      DMU\_OST\_META & DSL Object Set, see Chapter~\ref{chap:dsl}   & 1\\
+      DMU\_OST\_ZFS  & ZPL Object Set, see Chapter~\ref{chap:zpl}   & 2\\
+      DMU\_OST\_ZVOL & ZVOL Object Set, see Chapter~\ref{chap:zvol} & 3\\
+    }
+  \end{LongTable3Columns}
+\item[os\_zil\_header]
+  The ZIL header is described in detail in Chapter~\ref{chap:zil} of this document.
+\item[os\_flags]
+  \textcolor{red}{TBD}
+\item[os\_portable\_mac]
+  \textcolor{red}{TBD}
+\item[os\_local\_mac]
+  \textcolor{red}{TBD}
+\item[os\_userused\_dnode]
+  \textcolor{red}{TBD}
+\item[os\_groupused\_dnode]
+  \textcolor{red}{TBD}
+\item[os\_projectused\_dnode]
+  \textcolor{red}{TBD}
+\item[os\_metadnode]
+  As described earlier in this chapter,
+  each object is described by a \lstinline{dnode_phys_t}.
+  The collection of \lstinline{dnode_phys_t} structures describing the objects in this object set
+  are stored as an object pointed to by the metadnode.
+  The data contained within this object is formatted as an array of \lstinline{dnode_phys_t} structures
+  (one for each object within the object set).
+
+  Each object within an object set is uniquely identified by a 64 bit integer called an object number.
+  An object's ``object number'' identifies the array element,
+  in the dnode array, containing this object's \lstinline{dnode_phys_t}.
+
+  The illustration below shows an object set with the metadnode expanded.
+  The metadnode contains three block pointers,
+  each of which have been expanded to show their contents.
+  Object number 4 has been further expanded to show the details of the \lstinline{dnode_phys_t}
+  and the block structure referenced by this dnode.
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/zfs_objset.pdf}
+    \caption{Object Set}
+    \label{fig:objset}
+  \end{figure}
+\end{description}
+
+\subsection{zap\_phys\_t}
+
+The first block of a fatzap object contains a 128KB \lstinline{zap_phys_t} structure.
+Depending on the size of the pointer table,
+this structure may contain the pointer table.
+If the pointer table is too large to fit in the space provided by the \lstinline{zap_phys_t},
+some information about where it can be found
+is stored in the \lstinline{zap_table_phys} portion of this structure.
+The definitions of the \lstinline{zap_phys_t} contents are as follows:

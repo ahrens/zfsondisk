@@ -1,0 +1,26 @@
+\begin{tikzpicture}[
+  every node/.style={
+    draw=darkpurple, fill=sunpurple,
+    minimum height=1cm, minimum width=2.5cm, text width=2.5cm, align=center,
+    font=\sffamily
+  }
+]
+  \node (header) {Header};
+  \node (record0) [right=1cm  of header] {Log Record};
+  \node (record1) [below=0 of record0] {Log Record};
+  \node (empty0) [below=0 of record1, fill=white, minimum height=2cm] {};
+  \node (trailer0) [below=0 of empty0] {Trailer};
+  \node (t0) [above=0cm of record0, minimum height=.5cm, inner sep=0pt, outer sep=0pt, draw=none, fill=none] {Log Block};
+
+  \node (record2) [right=1cm  of record0] {Log Record};
+  \node (record3) [below=0 of record2] {Log Record};
+  \node (empty1) [below=0 of record3, fill=white, minimum height=2cm] {};
+  \node (trailer1) [below=0 of empty1] {Trailer};
+  \node (t1) [above=0cm of record2, minimum height=.5cm, inner sep=0pt, outer sep=0pt, draw=none, fill=none] {Log Block};
+
+  \node (dots) [right=1cm of record2, minimum width=1cm, text width=1cm, minimum height=.5cm, inner sep=0pt, outer sep=0pt, draw=none, fill=none] {\large{\bfseries$\ldots$}};
+
+  \draw [->, rounded corners=2pt] (header.east) -- (record0.west);
+  \draw [->, rounded corners=2pt] (trailer0.east) -- ++(.5cm,0) |- (record2.west);
+  \draw [->, rounded corners=2pt] (trailer1.east) -- ++(.5cm,0) |- (dots.west);
+\end{tikzpicture}

@@ -11,4 +11,12 @@ FIGURES_PDF =	zfs_label.pdf			\
 		zfs_indirect.pdf		\
 		zfs_dsl_infra.pdf		\
 		zfs_dnode_phys.pdf		\
-		zfs_3levels.pdf		
+		zfs_3levels.pdf			\
+		zfs_objset_phys.pdf		\
+		zfs_objset.pdf			\
+		zfs_ondisk_mos.pdf		\
+		zfs_mzap.pdf			\
+		zfs_fzap_overview.pdf		\
+		zfs_zap_phys.pdf		\
+		zfs_zap_leaf.pdf		\
+		zfs_zil_structure.pdf

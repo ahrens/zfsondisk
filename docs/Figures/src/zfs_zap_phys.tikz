@@ -1,0 +1,33 @@
+\begin{tikzpicture}[%
+  every node/.style={
+    font=\ttfamily,
+    outer sep=0pt, inner sep=2pt,
+  },
+  field/.style={
+    draw=none, rectangle, fill=zap_bg_color, text=zap_ru_color,
+    minimum width=7cm, text width=7cm, align=left,
+    minimum height=10.5pt
+  }
+]
+  \node (zap_block_type) [field] {uint64\_t\hspace{3em} zap\_block\_type;};
+  \node (zap_magic) [field, below=0cm of zap_block_type] {uint64\_t\hspace{3em} zap\_magic;};
+  \node (zap_table_phys) [field, below=0cm of zap_magic] {struct zap\_table\_phys \{};
+
+  \node (zt_blk) [field, below=0cm of zap_table_phys] {\hspace{4em}uint64\_t\hspace{1em}zt\_blk;};
+  \node (zt_numblks) [field, below=0cm of zt_blk] {\hspace{4em}uint64\_t\hspace{1em}zt\_numblks;};
+  \node (zt_shift) [field, below=0cm of zt_numblks] {\hspace{4em}uint64\_t\hspace{1em}zt\_shift;};
+  \node (zt_nextblk) [field, below=0cm of zt_shift] {\hspace{4em}uint64\_t\hspace{1em}zt\_nextblk;};
+  \node (zt_blk_copied) [field, below=0cm of zt_nextblk] {\hspace{4em}uint64\_t\hspace{1em}zt\_blk\_copied;};
+  \node (zt_end) [field, below=0cm of zt_blk_copied] {\}};
+
+  \node (zap_freeblk) [field, below=0cm of zt_end] {uint64\_t\hspace{3em} zap\_freeblk;};
+  \node (zap_num_leafs) [field, below=0cm of zap_freeblk] {uint64\_t\hspace{3em} zap\_num\_leafs;};
+  \node (zap_num_entries) [field, below=0cm of zap_num_leafs] {uint64\_t\hspace{3em} zap\_num\_entries;};
+  \node (zap_salt) [field, below=0cm of zap_num_entries] {uint64\_t\hspace{3em} zap\_salf;};
+  \node (zap_pad) [field, below=0cm of zap_salt] {uint64\_t\hspace{3em} zap\_pad[8181];};
+  \node (zap_leafs) [field, below=0cm of zap_pad] {uint64\_t\hspace{3em} zap\_leaf[8192];};
+
+  \draw[zap_li_color] (zap_block_type.north west) -- (zap_block_type.north east)
+  -- (zap_leafs.south east) -- (zap_leafs.south west) -- cycle;
+  \titleof{zap_block_type}{zap_ru_color}{zap\_phys\_t}
+\end{tikzpicture}
